@@ -1,4 +1,4 @@
-use crate::parse::{self, DocumentExtractor, HeaderExtractor};
+use crate::parse::{DocumentExtractor, HeaderExtractor};
 use reqwest::{Client, ClientBuilder};
 use serde::{Deserialize, Serialize};
 use std::error::Error;

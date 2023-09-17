@@ -1,4 +1,3 @@
-use crate::parse;
 use reqwest::header::HeaderMap;
 use scraper::{Html, Selector};
 use std::{collections::HashMap, error::Error};
