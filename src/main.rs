@@ -1,6 +1,6 @@
 mod database;
 mod kf2;
-mod parser;
+mod parse;
 
 use kf2::Kf2Logger;
 
