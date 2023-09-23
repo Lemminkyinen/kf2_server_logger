@@ -109,15 +109,24 @@ impl Kf2Logger {
     }
 
     pub async fn log_players(&self) -> Result<(), Box<dyn Error>> {
-        let response = self.session.get(self.url.info.as_str()).send().await?;
-        let text = response.text().await?;
-        let document = DocumentExtractor::new(&text);
-        let players_in_game = document.parse_in_game_player_info();
+        let response1 = self.session.get(self.url.info.as_str()).send();
+        let response2 = self.session.get(self.url.players.as_str()).send();
 
-        let response = self.session.get(self.url.players.as_str()).send().await?;
-        let text = response.text().await?;
-        let document = DocumentExtractor::new(&text);
-        let players_steam = document.parse_steam_player_info();
+        let (response1_future, response2_future) = tokio::join!(response1, response2);
+
+        let response1 = response1_future?;
+        let response2 = response2_future?;
+
+        let text1_future = response1.text();
+        let text2_future = response2.text();
+
+        let (text1, text2) = tokio::join!(text1_future, text2_future);
+
+        let document1 = DocumentExtractor::new(&text1?);
+        let document2 = DocumentExtractor::new(&text2?);
+
+        let players_in_game = document1.parse_in_game_player_info();
+        let players_steam = document2.parse_steam_player_info();
 
         println!("{:?}", players_in_game);
         println!("{:?}", players_steam);
