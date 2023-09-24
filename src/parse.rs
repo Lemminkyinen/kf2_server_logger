@@ -1,6 +1,6 @@
 // use crate::model::Player;
 use reqwest::header::HeaderMap;
-use scraper::{Element, ElementRef, Html, Selector};
+use scraper::{ElementRef, Html, Selector};
 use std::{
     collections::HashMap,
     error::Error,
@@ -54,7 +54,10 @@ impl DocumentExtractor {
             .iter()
             .any(|e| e.select(&em_selector).next().is_some())
         {
-            true => Ok(Vec::new()),
+            true => Ok({
+                log::debug!("Player table contains em element, which means there are no players");
+                Vec::new()
+            }),
             false => Ok(player_trs),
         }
     }
@@ -71,7 +74,7 @@ impl DocumentExtractor {
             .map(|tr_player| match f(tr_player) {
                 Ok(player) => Some(player),
                 Err(e) => {
-                    println!("{}", e);
+                    log::error!("{}", e);
                     None
                 }
             })
@@ -131,7 +134,7 @@ impl DocumentExtractor {
         let tr_players = match self.parse_player_table() {
             Ok(tr_players) => tr_players,
             Err(e) => {
-                println!("Error when parsing in game player table: {}", e);
+                log::error!("Error when parsing in game player table: {}", e);
                 return Vec::new();
             }
         };
@@ -187,7 +190,7 @@ impl DocumentExtractor {
         let tr_players = match self.parse_player_table() {
             Ok(tr_players) => tr_players,
             Err(e) => {
-                println!("Error when parsing steam player table: {}", e);
+                log::error!("Error when parsing steam player table: {}", e);
                 return Vec::new();
             }
         };
@@ -230,7 +233,10 @@ impl HeaderExtractor {
                         }
                     })
                     .collect(),
-                Err(e) => HashMap::new(),
+                Err(e) => {
+                    log::error!("Error when parsing cookie: {}", e);
+                    HashMap::new()
+                }
             },
             None => HashMap::new(),
         }

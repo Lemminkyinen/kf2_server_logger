@@ -1,9 +1,9 @@
 use crate::parse::{DocumentExtractor, HeaderExtractor};
-use reqwest::{dns::Resolving, Client, ClientBuilder};
+use reqwest::{Client, ClientBuilder};
 use serde::{Deserialize, Serialize};
+use std::error::Error;
 use std::fs::File;
 use std::io::{self, Write};
-use std::{error::Error, num::ParseIntError};
 use url::Url;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -57,9 +57,7 @@ impl Kf2Logger {
         username: String,
         password: String,
     ) -> Result<Self, Box<dyn Error>> {
-        let base_url = ip_addr.clone();
-        drop(ip_addr);
-        let url = Kf2Url::new(base_url)?;
+        let url = Kf2Url::new(ip_addr)?;
         let client = ClientBuilder::new().cookie_store(true).build()?;
         let get_response = client.get(url.web_admin.as_str()).send().await?;
         let headers = HeaderExtractor::new(get_response.headers().to_owned());
