@@ -1,48 +1,22 @@
-mod database;
-mod kf2;
-mod model;
-mod parse;
+mod args;
+mod kf2_database;
+mod kf2_log;
+mod kf2_scrape;
 pub mod schema;
 
 use clap::Parser;
-use database::KfDatabase;
-use kf2::Kf2Logger;
+use kf2_database::models::KfDbManager;
+use kf2_log::logger::Kf2Logger;
 use log::{debug, error, info, log_enabled, warn, Level};
 use url::Url;
-
-#[derive(Debug, Parser)]
-struct Args {
-    kf2_server_ip: Url,
-    kf2_username: String,
-    kf2_password: String,
-    db_server: String,
-    db_database: String,
-    db_username: String,
-    db_password: String,
-}
 
 #[tokio::main]
 async fn main() {
     env_logger::init();
-    let args = Args::parse();
+    let (server_args, db_args) = args::parse();
 
-    let kf2db = KfDatabase::new_session(
-        args.db_server,
-        args.db_database,
-        args.db_username,
-        args.db_password,
-    )
-    .await
-    .unwrap();
-
-    let mut kf2 = Kf2Logger::new_session(
-        args.kf2_server_ip,
-        args.kf2_username,
-        args.kf2_password,
-        kf2db,
-    )
-    .await
-    .unwrap();
+    let kf2db = KfDbManager::new_session(db_args).await.unwrap();
+    let mut kf2 = Kf2Logger::new_session(server_args, kf2db).await.unwrap();
 
     let mut interval = tokio::time::interval(std::time::Duration::from_secs(10));
     loop {

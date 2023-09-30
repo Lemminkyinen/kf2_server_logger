@@ -1,11 +1,16 @@
-use crate::database::{KfDatabase, PlayerDb};
-use crate::parse::{DocumentExtractor, HeaderExtractor};
+use crate::args::Kf2ServerArgs;
+use crate::kf2_database::models::KfDbManager;
+use crate::kf2_database::models_db::PlayerDb;
+
+use crate::kf2_scrape::parse::{DocumentExtractor, HeaderExtractor};
+
 use reqwest::{Client, ClientBuilder};
 use serde::{Deserialize, Serialize};
 use std::error::Error;
 use std::fs::File;
 use std::io::{self, Write};
 use url::Url;
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AuthForm {
     pub token: String,
@@ -41,7 +46,7 @@ impl Kf2Url {
 pub struct Kf2Logger {
     url: Kf2Url,
     session: Client,
-    db_connection: KfDatabase,
+    db_connection: KfDbManager,
     session_id: String,
     auth_cred: Option<String>,
 }
@@ -54,11 +59,10 @@ fn write_text_to_file(filename: &str, text: &str) -> io::Result<()> {
 
 impl Kf2Logger {
     pub async fn new_session(
-        ip_addr: Url,
-        username: String,
-        password: String,
-        db_connection: KfDatabase,
+        args: Kf2ServerArgs,
+        db_connection: KfDbManager,
     ) -> Result<Self, Box<dyn Error>> {
+        let (ip_addr, username, password) = args.get();
         let url = Kf2Url::new(ip_addr)?;
         let client = ClientBuilder::new().cookie_store(true).build()?;
         let get_response = client.get(url.web_admin.as_str()).send().await?;
@@ -133,7 +137,7 @@ impl Kf2Logger {
         // println!("{:?}", players_steam);
 
         let players = players_steam.into_iter().map(PlayerDb::from).collect();
-        self.db_connection.log_players(players).await?;
+        self.db_connection.log_unique_players(players).await?;
 
         Ok(())
     }
