@@ -7,8 +7,7 @@ use std::{
     net::{IpAddr, Ipv4Addr},
 };
 
-use crate::model::{Perk, Player, PlayerInGame, PlayerInfo};
-
+use super::models::{Perk, Player, PlayerInGame, PlayerInfo};
 pub struct DocumentExtractor {
     document: Html,
 }

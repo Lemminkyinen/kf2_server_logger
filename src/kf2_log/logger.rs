@@ -1,4 +1,9 @@
-use crate::parse::{DocumentExtractor, HeaderExtractor};
+use crate::args::Kf2ServerArgs;
+use crate::kf2_database::models::KfDbManager;
+use crate::kf2_database::models_db::PlayerDb;
+
+use crate::kf2_scrape::parse::{DocumentExtractor, HeaderExtractor};
+
 use reqwest::{Client, ClientBuilder};
 use serde::{Deserialize, Serialize};
 use std::error::Error;
@@ -41,6 +46,7 @@ impl Kf2Url {
 pub struct Kf2Logger {
     url: Kf2Url,
     session: Client,
+    db_connection: KfDbManager,
     session_id: String,
     auth_cred: Option<String>,
 }
@@ -53,10 +59,10 @@ fn write_text_to_file(filename: &str, text: &str) -> io::Result<()> {
 
 impl Kf2Logger {
     pub async fn new_session(
-        ip_addr: Url,
-        username: String,
-        password: String,
+        args: Kf2ServerArgs,
+        db_connection: KfDbManager,
     ) -> Result<Self, Box<dyn Error>> {
+        let (ip_addr, username, password) = args.get();
         let url = Kf2Url::new(ip_addr)?;
         let client = ClientBuilder::new().cookie_store(true).build()?;
         let get_response = client.get(url.web_admin.as_str()).send().await?;
@@ -89,6 +95,7 @@ impl Kf2Logger {
             session,
             session_id,
             auth_cred,
+            db_connection,
         })
     }
 
@@ -106,7 +113,7 @@ impl Kf2Logger {
         todo!()
     }
 
-    pub async fn log_players(&self) -> Result<(), Box<dyn Error>> {
+    pub async fn log_players(&mut self) -> Result<(), Box<dyn Error>> {
         let response1 = self.session.get(self.url.info.as_str()).send();
         let response2 = self.session.get(self.url.players.as_str()).send();
 
@@ -126,8 +133,11 @@ impl Kf2Logger {
         let players_in_game = document1.parse_in_game_player_info();
         let players_steam = document2.parse_steam_player_info();
 
-        println!("{:?}", players_in_game);
-        println!("{:?}", players_steam);
+        // println!("{:?}", players_in_game);
+        // println!("{:?}", players_steam);
+
+        let players = players_steam.into_iter().map(PlayerDb::from).collect();
+        self.db_connection.log_unique_players(players).await?;
 
         Ok(())
     }
