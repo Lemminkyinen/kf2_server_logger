@@ -1,6 +1,6 @@
 use crate::args::Kf2ServerArgs;
 use crate::kf2_database::models::KfDbManager;
-use crate::kf2_database::models_db::PlayerDb;
+use crate::kf2_database::models_db::PlayerDbI;
 
 use crate::kf2_scrape::parse::{DocumentExtractor, HeaderExtractor};
 
@@ -136,8 +136,8 @@ impl Kf2Logger {
         // println!("{:?}", players_in_game);
         // println!("{:?}", players_steam);
 
-        let players = players_steam.into_iter().map(PlayerDb::from).collect();
-        self.db_connection.log_unique_players(players).await?;
+        // let players = players_steam.into_iter().map(PlayerDbI::from).collect();
+        self.db_connection.log_unique_players(players_steam).await?;
 
         Ok(())
     }

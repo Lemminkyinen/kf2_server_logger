@@ -1,38 +1,77 @@
 use crate::kf2_scrape::models::PlayerInfo;
 use chrono;
 use diesel::prelude::*;
-use diesel_async::AsyncMysqlConnection;
+use log::error;
 use std::net::Ipv4Addr;
 
-#[derive(Queryable, Selectable, Insertable, AsChangeset, Clone)]
-#[diesel(table_name = crate::schema::players_)]
+#[derive(Queryable, Selectable, Clone)]
+#[diesel(table_name = crate::schema::ip_addresses)]
 #[diesel(check_for_backend(diesel::mysql::Mysql))]
-pub struct PlayerDb {
+pub struct IpAddressDbQ {
+    pub(super) id: u32,
     pub(super) steam_id: u64,
-    pub(super) name: String,
-    pub(super) count: u32,
     pub(super) ip_address: u32,
-    pub(super) ping: u32,
-    pub(super) unique_net_id: String,
-    pub(super) last_joined: chrono::NaiveDateTime,
+    pub(super) created: chrono::NaiveDateTime,
+}
+#[derive(Insertable, AsChangeset, Clone)]
+#[diesel(table_name = crate::schema::ip_addresses)]
+#[diesel(check_for_backend(diesel::mysql::Mysql))]
+pub struct IpAddressDbI {
+    pub(super) steam_id: u64,
+    pub(super) ip_address: u32,
 }
 
-impl PlayerDb {
+impl IpAddressDbI {
     pub fn from(player_steam: PlayerInfo) -> Self {
         let ip_address = match player_steam.ip {
             std::net::IpAddr::V4(ip) => ip,
-            _ => Ipv4Addr::new(0, 0, 0, 0),
+            ip => {
+                error!("Invalid IP address {}", ip);
+                Ipv4Addr::new(0, 0, 0, 0)
+            }
         };
-        let ip_address: u32 = ip_address.into();
+        Self {
+            steam_id: player_steam.steam_id,
+            ip_address: ip_address.into(),
+        }
+    }
+}
+
+#[derive(Queryable, Selectable, Clone)]
+#[diesel(table_name = crate::schema::unique_players)]
+#[diesel(check_for_backend(diesel::mysql::Mysql))]
+pub struct PlayerDbQ {
+    pub(super) steam_id: u64,
+    pub(super) name: String,
+    pub(super) maps_played: u32,
+    pub(super) avg_ping: u32,
+    pub(super) unique_net_id: String,
+    pub(super) created: chrono::NaiveDateTime,
+    pub(super) last_seen: chrono::NaiveDateTime,
+}
+
+#[derive(Insertable, AsChangeset, Clone)]
+#[diesel(table_name = crate::schema::unique_players)]
+#[diesel(check_for_backend(diesel::mysql::Mysql))]
+pub struct PlayerDbI {
+    pub(super) steam_id: u64,
+    pub(super) name: String,
+    pub(super) maps_played: u32,
+    pub(super) avg_ping: u32,
+    pub(super) unique_net_id: String,
+    pub(super) last_seen: chrono::NaiveDateTime,
+}
+
+impl PlayerDbI {
+    pub fn from(player_steam: PlayerInfo) -> Self {
         let last_joined = chrono::Local::now().naive_utc();
         Self {
             steam_id: player_steam.steam_id,
             name: player_steam.name,
-            count: 0,
-            ip_address,
-            ping: player_steam.ping,
+            maps_played: 0,
+            avg_ping: player_steam.ping,
             unique_net_id: player_steam.unique_net_id,
-            last_joined,
+            last_seen: last_joined,
         }
     }
 }

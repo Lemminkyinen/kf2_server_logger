@@ -50,7 +50,7 @@ pub struct PlayerInGame {
     pub admin: bool,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PlayerInfo {
     pub name: String,
     pub ping: u32,
