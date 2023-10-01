@@ -18,10 +18,10 @@ impl Kf2ServerArgs {
 
 #[derive(Debug)]
 pub struct Kf2DbArgs {
-    server_address: String,
-    database: String,
-    username: String,
-    password: String,
+    pub(super) server_address: String,
+    pub(super) database: String,
+    pub(super) username: String,
+    pub(super) password: String,
 }
 
 impl Kf2DbArgs {

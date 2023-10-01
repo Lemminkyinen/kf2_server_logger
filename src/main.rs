@@ -15,7 +15,7 @@ async fn main() {
     env_logger::init();
     let (server_args, db_args) = args::parse();
 
-    let kf2db = KfDbManager::new_session(db_args).await.unwrap();
+    let kf2db = KfDbManager::new_session(db_args).unwrap();
     let mut kf2 = Kf2Logger::new_session(server_args, kf2db).await.unwrap();
 
     let mut interval = tokio::time::interval(std::time::Duration::from_secs(10));
