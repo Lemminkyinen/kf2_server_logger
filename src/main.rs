@@ -24,7 +24,7 @@ async fn main() {
         if let Err(err) = kf2.log_players().await {
             error!("{}", err);
         } else {
-            info!("Players logged");
+            // info!("Players logged");
         }
     }
 }

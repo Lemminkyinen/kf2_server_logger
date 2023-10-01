@@ -16,6 +16,9 @@ impl KfDbManager {
         &mut self,
         players: Vec<PlayerInfo>,
     ) -> Result<(), Box<dyn Error>> {
+        if players.is_empty() {
+            return Ok(());
+        }
         let mut connection1 = self.get_connection()?;
         let mut connection2 = self.get_connection()?;
         let players2 = players.clone();
@@ -142,7 +145,6 @@ impl KfDbManager {
                         name.eq(p_name.clone()),
                         // maps_played.eq(p_count),
                         avg_ping.eq(p_ping),
-                        // ip_address.eq(player.ip_address),
                         unique_net_id.eq(player.unique_net_id),
                     ))
                     .execute(connection)?;
