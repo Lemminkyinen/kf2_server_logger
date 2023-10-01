@@ -7,7 +7,7 @@ use diesel::MysqlConnection;
 use std::error::Error;
 
 impl KfDbManager {
-    pub async fn new_session(args: Kf2DbArgs) -> Result<Self, Box<dyn Error>> {
+    pub fn new_session(args: Kf2DbArgs) -> Result<Self, Box<dyn Error>> {
         let database_url = args.get_connection_string();
         let (username, password, ip_addr, _) = args.get();
         let manager = ConnectionManager::<MysqlConnection>::new(database_url);
@@ -20,8 +20,8 @@ impl KfDbManager {
         })
     }
 
-    pub fn get_connection(
-        &mut self,
+    pub(super) fn get_connection(
+        &self,
     ) -> Result<PooledConnection<ConnectionManager<MysqlConnection>>, Box<dyn Error>> {
         let new_pool = self.pool.clone();
         Ok(new_pool.get()?)

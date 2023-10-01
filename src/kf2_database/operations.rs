@@ -4,11 +4,9 @@ use crate::{
     kf2_database::models_db::{IpAddressDbI, IpAddressDbQ, PlayerDbQ},
     kf2_scrape::models::PlayerInfo,
 };
-use diesel::dsl::*;
 use diesel::mysql::MysqlConnection;
-use diesel::prelude::*;
 use diesel::r2d2::{ConnectionManager, PooledConnection};
-use diesel::{BelongingToDsl, ExpressionMethods, QueryDsl, RunQueryDsl};
+use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl};
 use log::{debug, error, info, log_enabled, warn, Level};
 use std::{error::Error, net::Ipv4Addr};
 use std::{io::ErrorKind, thread};
@@ -28,34 +26,31 @@ impl KfDbManager {
             };
             Ok(())
         });
+        thread_players.join().unwrap()?;
         let thread_ip = thread::spawn(move || {
             if let Err(err) = Self::insert_ip_addresses(&mut connection2, players2) {
                 return Err(std::io::Error::new(ErrorKind::Other, err.to_string()));
             };
             Ok(())
         });
-
-        thread_players.join().unwrap()?;
         thread_ip.join().unwrap()?;
         Ok(())
     }
 
-    fn insert_ip_addresses(
+    pub(super) fn insert_ip_addresses(
         connection: &mut PooledConnection<ConnectionManager<MysqlConnection>>,
         players: Vec<PlayerInfo>,
     ) -> Result<(), Box<dyn Error>> {
         use crate::schema::ip_addresses::dsl::*;
 
-        // let asd = ip_addresses.filter(steam_id.eq_any(players.iter().map(|p| &p.steam_id)));
-
-        let existing_ip_addresses = ip_addresses
+        let existing_ip_addresses: Vec<IpAddressDbQ> = ip_addresses
             .filter(steam_id.eq_any(players.iter().map(|p| &p.steam_id)))
             .load::<IpAddressDbQ>(connection)?;
 
         let new_ip_addresses = players
             .into_iter()
             .filter(|p| {
-                existing_ip_addresses.iter().any(|ip| {
+                existing_ip_addresses.iter().all(|ip| {
                     let player_ip: u32 = match p.ip {
                         std::net::IpAddr::V4(ip) => ip.into(),
                         ip => {
@@ -63,11 +58,11 @@ impl KfDbManager {
                             Ipv4Addr::new(0, 0, 0, 0).into()
                         }
                     };
-                    ip.steam_id != p.steam_id && ip.ip_address != player_ip
+                    !(ip.steam_id == p.steam_id && ip.ip_address == player_ip)
                 })
             })
             .map(|p| IpAddressDbI::from(p))
-            .collect::<Vec<IpAddressDbI>>();
+            .collect::<Vec<_>>();
 
         if new_ip_addresses.len() > 0 {
             let len = new_ip_addresses.len();
@@ -79,7 +74,7 @@ impl KfDbManager {
         Ok(())
     }
 
-    fn insert_unique_players(
+    pub(super) fn insert_unique_players(
         connection: &mut PooledConnection<ConnectionManager<MysqlConnection>>,
         players: Vec<PlayerInfo>,
     ) -> Result<(), Box<dyn Error>> {

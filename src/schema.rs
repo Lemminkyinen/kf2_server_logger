@@ -25,4 +25,7 @@ diesel::table! {
 
 diesel::joinable!(ip_addresses -> unique_players (steam_id));
 
-diesel::allow_tables_to_appear_in_same_query!(ip_addresses, unique_players,);
+diesel::allow_tables_to_appear_in_same_query!(
+    ip_addresses,
+    unique_players,
+);
