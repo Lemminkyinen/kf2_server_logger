@@ -7,7 +7,7 @@ use diesel::MysqlConnection;
 use std::error::Error;
 
 impl KfDbManager {
-    pub fn new_session(args: Kf2DbArgs) -> Result<Self, Box<dyn Error>> {
+    pub(crate) fn new_session(args: Kf2DbArgs) -> Result<Self, Box<dyn Error>> {
         let database_url = args.get_connection_string();
         let (username, password, ip_addr, _) = args.get();
         let manager = ConnectionManager::<MysqlConnection>::new(database_url);

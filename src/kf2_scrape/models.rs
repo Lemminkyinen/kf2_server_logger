@@ -1,6 +1,12 @@
+use diesel::deserialize::FromSql;
+use diesel::expression::AsExpression;
+use diesel::mysql::Mysql;
+use diesel::serialize::{self, Output, ToSql};
+use diesel::sql_types::VarChar;
+use std::io::Write;
 use std::{error::Error, net::IpAddr};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Perk {
     Berserker,
     Commando,
@@ -30,6 +36,23 @@ impl Perk {
             "survivalist" => Ok(Perk::Survivalist),
             "swat" => Ok(Perk::Swat),
             e => Err(format!("Perk {} not found", e).into()),
+        }
+    }
+}
+
+impl ToString for Perk {
+    fn to_string(&self) -> String {
+        match self {
+            Perk::Berserker => "Berserker".to_string(),
+            Perk::Commando => "Commando".to_string(),
+            Perk::Support => "Support".to_string(),
+            Perk::FieldMedic => "Field Medic".to_string(),
+            Perk::Demolitionist => "Demolitionist".to_string(),
+            Perk::Firebug => "Firebug".to_string(),
+            Perk::Gunslinger => "Gunslinger".to_string(),
+            Perk::Sharpshooter => "Sharpshooter".to_string(),
+            Perk::Survivalist => "Survivalist".to_string(),
+            Perk::Swat => "Swat".to_string(),
         }
     }
 }

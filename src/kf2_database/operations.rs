@@ -1,18 +1,18 @@
 use super::models::KfDbManager;
 use super::models_db::PlayerDbI;
 use crate::{
-    kf2_database::models_db::{IpAddressDbI, IpAddressDbQ, PlayerDbQ},
-    kf2_scrape::models::PlayerInfo,
+    kf2_database::models_db::{CurrentPlayer, IpAddressDbI, IpAddressDbQ, PlayerDbQ},
+    kf2_scrape::models::{PlayerInGame, PlayerInfo},
 };
 use diesel::mysql::MysqlConnection;
 use diesel::r2d2::{ConnectionManager, PooledConnection};
 use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl};
 use log::{debug, error, info, log_enabled, warn, Level};
-use std::{error::Error, net::Ipv4Addr};
+use std::{error::Error, net::Ipv4Addr, thread::current};
 use std::{io::ErrorKind, thread};
 
 impl KfDbManager {
-    pub async fn log_unique_players(
+    pub(crate) async fn log_unique_players(
         &mut self,
         players: Vec<PlayerInfo>,
     ) -> Result<(), Box<dyn Error>> {
@@ -151,6 +151,42 @@ impl KfDbManager {
                 info!("Updated player: {}", p_name);
             }
         }
+        Ok(())
+    }
+
+    pub(super) fn clean_current_players(
+        connection: &mut PooledConnection<ConnectionManager<MysqlConnection>>,
+    ) -> Result<(), Box<dyn Error>> {
+        use crate::schema::current_players::dsl::*;
+        diesel::delete(current_players).execute(connection)?;
+        Ok(())
+    }
+
+    pub(super) fn insert_current_players(
+        connection: &mut PooledConnection<ConnectionManager<MysqlConnection>>,
+        players: Vec<PlayerInGame>,
+    ) -> Result<(), Box<dyn Error>> {
+        use crate::schema::current_players::dsl::*;
+        let players = players
+            .into_iter()
+            .map(|p| p.into())
+            .collect::<Vec<CurrentPlayer>>();
+        diesel::insert_into(current_players)
+            .values(players)
+            .execute(connection)?;
+        Ok(())
+    }
+
+    pub(crate) async fn log_in_game_players(
+        &mut self,
+        players: Vec<PlayerInGame>,
+    ) -> Result<(), Box<dyn Error>> {
+        let mut connection = self.get_connection()?;
+        Self::clean_current_players(&mut connection)?;
+        if players.is_empty() {
+            return Ok(());
+        }
+        Self::insert_current_players(&mut connection, players)?;
         Ok(())
     }
 }

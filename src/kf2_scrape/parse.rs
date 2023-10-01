@@ -96,15 +96,15 @@ impl DocumentExtractor {
                 .inner_html()
                 .parse()
                 .unwrap_or(0);
-            let kills = td_fields
-                .next()
-                .ok_or("Kills tr not found")?
-                .inner_html()
-                .parse()
-                .unwrap_or(0);
             let health = td_fields
                 .next()
                 .ok_or("Health tr not found")?
+                .inner_html()
+                .parse()
+                .unwrap_or(0);
+            let kills = td_fields
+                .next()
+                .ok_or("Kills tr not found")?
                 .inner_html()
                 .parse()
                 .unwrap_or(0);
