@@ -21,10 +21,13 @@ async fn main() {
     let mut interval = tokio::time::interval(std::time::Duration::from_secs(10));
     loop {
         interval.tick().await;
-        if let Err(err) = kf2.log_players().await {
+        if let Err(err) = kf2.log_unique_players().await {
             error!("{}", err);
         } else {
             // info!("Players logged");
+        }
+        if let Err(err) = kf2.loq_in_game_players().await {
+            error!("{}", err);
         }
     }
 }
