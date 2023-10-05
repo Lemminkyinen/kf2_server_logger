@@ -167,7 +167,7 @@ impl Kf2Logger {
             };
             game_session.reached_wave = reached_wave;
             game_session.players_at_most = players_at_most;
-            game_session.ended_at = Some(chrono::Local::now().naive_utc());
+            game_session.ended_at = Some(chrono::Utc::now().naive_utc());
             self.db_connection
                 .log_game_session(game_session.clone())
                 .await?;
@@ -183,7 +183,7 @@ impl Kf2Logger {
                 difficulty: game_info.difficulty,
                 game_type: game_info.game_type,
                 boss: boss,
-                started_at: chrono::Local::now().naive_utc(),
+                started_at: chrono::Utc::now().naive_utc(),
                 ended_at: None,
             };
             let db_id = self
