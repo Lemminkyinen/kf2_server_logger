@@ -15,6 +15,26 @@ diesel::table! {
 }
 
 diesel::table! {
+    game_sessions (id) {
+        id -> Unsigned<Integer>,
+        max_waves -> Unsigned<Smallint>,
+        reached_wave -> Unsigned<Smallint>,
+        max_players -> Unsigned<Smallint>,
+        players_at_most -> Unsigned<Smallint>,
+        #[max_length = 50]
+        map_name -> Varchar,
+        #[max_length = 50]
+        difficulty -> Varchar,
+        #[max_length = 50]
+        game_type -> Varchar,
+        #[max_length = 50]
+        boss -> Varchar,
+        started_at -> Timestamp,
+        ended_at -> Nullable<Timestamp>,
+    }
+}
+
+diesel::table! {
     ip_addresses (id) {
         id -> Unsigned<Integer>,
         steam_id -> Unsigned<Bigint>,
@@ -39,4 +59,9 @@ diesel::table! {
 
 diesel::joinable!(ip_addresses -> unique_players (steam_id));
 
-diesel::allow_tables_to_appear_in_same_query!(current_players, ip_addresses, unique_players,);
+diesel::allow_tables_to_appear_in_same_query!(
+    current_players,
+    game_sessions,
+    ip_addresses,
+    unique_players,
+);

@@ -1,2 +1,2 @@
-pub mod logger;
+pub(super) mod logger;
 mod tests;

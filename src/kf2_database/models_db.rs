@@ -1,4 +1,7 @@
-use crate::kf2_scrape::models::{Perk, PlayerInGame, PlayerInfo};
+use crate::{
+    kf2_log::logger::GameSession,
+    kf2_scrape::models::{KfDifficulty, Perk, PlayerInGame, PlayerInfo},
+};
 use chrono;
 use diesel::prelude::*;
 use log::error;
@@ -7,7 +10,7 @@ use std::net::Ipv4Addr;
 #[derive(Queryable, Selectable, Clone)]
 #[diesel(table_name = crate::schema::ip_addresses)]
 #[diesel(check_for_backend(diesel::mysql::Mysql))]
-pub struct IpAddressDbQ {
+pub(crate) struct IpAddressDbQ {
     pub(super) id: u32,
     pub(super) steam_id: u64,
     pub(super) ip_address: u32,
@@ -16,13 +19,13 @@ pub struct IpAddressDbQ {
 #[derive(Insertable, AsChangeset, Clone)]
 #[diesel(table_name = crate::schema::ip_addresses)]
 #[diesel(check_for_backend(diesel::mysql::Mysql))]
-pub struct IpAddressDbI {
+pub(crate) struct IpAddressDbI {
     pub(super) steam_id: u64,
     pub(super) ip_address: u32,
 }
 
 impl IpAddressDbI {
-    pub fn from(player_steam: PlayerInfo) -> Self {
+    pub(crate) fn from(player_steam: PlayerInfo) -> Self {
         let ip_address = match player_steam.ip {
             std::net::IpAddr::V4(ip) => ip,
             ip => {
@@ -40,7 +43,7 @@ impl IpAddressDbI {
 #[derive(Queryable, Selectable, Clone)]
 #[diesel(table_name = crate::schema::unique_players)]
 #[diesel(check_for_backend(diesel::mysql::Mysql))]
-pub struct PlayerDbQ {
+pub(crate) struct PlayerDbQ {
     pub(super) steam_id: u64,
     pub(super) name: String,
     pub(super) maps_played: u32,
@@ -97,6 +100,74 @@ impl From<PlayerInGame> for CurrentPlayer {
             dosh: player.dosh,
             kills: player.kills,
             ping: player.ping,
+        }
+    }
+}
+
+#[derive(Insertable, Clone)]
+#[diesel(table_name = crate::schema::game_sessions)]
+#[diesel(check_for_backend(diesel::mysql::Mysql))]
+pub(super) struct GameSessionDbI {
+    pub(crate) max_waves: u16,
+    pub(crate) reached_wave: u16,
+    pub(crate) max_players: u16,
+    pub(crate) players_at_most: u16,
+    pub(crate) map_name: String,
+    pub(crate) difficulty: String,
+    pub(crate) game_type: String,
+    pub(crate) boss: String,
+    pub(crate) started_at: chrono::NaiveDateTime,
+    pub(crate) ended_at: Option<chrono::NaiveDateTime>,
+}
+
+impl Into<GameSessionDbI> for GameSession {
+    fn into(self) -> GameSessionDbI {
+        GameSessionDbI {
+            max_waves: self.max_waves,
+            reached_wave: self.reached_wave,
+            max_players: self.max_players,
+            players_at_most: self.players_at_most,
+            map_name: self.map_name,
+            difficulty: self.difficulty.to_string(),
+            game_type: self.game_type,
+            boss: self.boss,
+            started_at: self.started_at,
+            ended_at: self.ended_at,
+        }
+    }
+}
+
+#[derive(Clone, Insertable, AsChangeset)]
+#[diesel(table_name = crate::schema::game_sessions)]
+#[diesel(check_for_backend(diesel::mysql::Mysql))]
+pub(super) struct GameSessionDbU {
+    pub(crate) id: u32,
+    pub(crate) max_waves: u16,
+    pub(crate) reached_wave: u16,
+    pub(crate) max_players: u16,
+    pub(crate) players_at_most: u16,
+    pub(crate) map_name: String,
+    pub(crate) difficulty: String,
+    pub(crate) game_type: String,
+    pub(crate) boss: String,
+    pub(crate) started_at: chrono::NaiveDateTime,
+    pub(crate) ended_at: Option<chrono::NaiveDateTime>,
+}
+
+impl Into<GameSessionDbU> for GameSession {
+    fn into(self) -> GameSessionDbU {
+        GameSessionDbU {
+            id: self.db_id.expect("no game session id!"),
+            max_waves: self.max_waves,
+            reached_wave: self.reached_wave,
+            max_players: self.max_players,
+            players_at_most: self.players_at_most,
+            map_name: self.map_name,
+            difficulty: self.difficulty.to_string(),
+            game_type: self.game_type,
+            boss: self.boss,
+            started_at: self.started_at,
+            ended_at: self.ended_at,
         }
     }
 }

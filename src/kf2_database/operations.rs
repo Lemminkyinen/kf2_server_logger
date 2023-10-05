@@ -1,8 +1,10 @@
 use super::models::KfDbManager;
-use super::models_db::PlayerDbI;
+use super::models_db::{GameSessionDbI, PlayerDbI};
+use crate::kf2_database::models_db::GameSessionDbU;
+use crate::kf2_log::logger::GameSession;
 use crate::{
     kf2_database::models_db::{CurrentPlayer, IpAddressDbI, IpAddressDbQ, PlayerDbQ},
-    kf2_scrape::models::{PlayerInGame, PlayerInfo},
+    kf2_scrape::models::{GameInfo, PlayerInGame, PlayerInfo},
 };
 use diesel::mysql::MysqlConnection;
 use diesel::r2d2::{ConnectionManager, PooledConnection};
@@ -188,5 +190,50 @@ impl KfDbManager {
         }
         Self::insert_current_players(&mut connection, players)?;
         Ok(())
+    }
+
+    pub(super) fn insert_game_session(
+        connection: &mut PooledConnection<ConnectionManager<MysqlConnection>>,
+        game_session: GameSessionDbI,
+    ) -> Result<u32, Box<dyn Error>> {
+        use crate::schema::game_sessions::dsl::*;
+        let result = diesel::insert_into(game_sessions)
+            .values(game_session)
+            .execute(connection)?;
+        let db_id = game_sessions
+            .select(diesel::dsl::max(id))
+            .load::<Option<u32>>(connection)?
+            .first()
+            .ok_or("no game session rows")?
+            .ok_or("no game session id ")?;
+        Ok(db_id)
+    }
+
+    pub(super) fn update_game_session(
+        connection: &mut PooledConnection<ConnectionManager<MysqlConnection>>,
+        game_session: GameSessionDbU,
+    ) -> Result<(), Box<dyn Error>> {
+        use crate::schema::game_sessions::dsl::*;
+        diesel::update(game_sessions.find(game_session.id))
+            .set(game_session)
+            .execute(connection)?;
+        Ok(())
+    }
+
+    pub(crate) async fn log_game_session(
+        &mut self,
+        game_info: GameSession,
+    ) -> Result<u32, Box<dyn Error>> {
+        let mut connection = self.get_connection()?;
+        let db_id;
+        if let Some(id) = game_info.db_id {
+            db_id = id;
+            let game_session = game_info.into();
+            Self::update_game_session(&mut connection, game_session)?;
+        } else {
+            let game_session = game_info.into();
+            db_id = Self::insert_game_session(&mut connection, game_session)?;
+        }
+        Ok(db_id)
     }
 }

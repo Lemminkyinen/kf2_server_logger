@@ -1,3 +1,4 @@
+use log::error;
 // use crate::model::Player;
 use reqwest::header::HeaderMap;
 use scraper::{ElementRef, Html, Selector};
@@ -7,19 +8,21 @@ use std::{
     net::{IpAddr, Ipv4Addr},
 };
 
-use super::models::{Perk, Player, PlayerInGame, PlayerInfo};
+use crate::schema::current_players;
+
+use super::models::{GameInfo, KfDifficulty, Perk, Player, PlayerInGame, PlayerInfo};
 pub struct DocumentExtractor {
     document: Html,
 }
 
 impl DocumentExtractor {
-    pub fn new(document: &str) -> Self {
+    pub(crate) fn new(document: &str) -> Self {
         Self {
             document: Html::parse_document(document),
         }
     }
 
-    pub fn parse_form_token(&self) -> Result<String, Box<dyn Error>> {
+    pub(crate) fn parse_form_token(&self) -> Result<String, Box<dyn Error>> {
         let selector = Selector::parse(r#"input[name="token"]"#)?;
         let token = self
             .document
@@ -81,7 +84,7 @@ impl DocumentExtractor {
             .collect()
     }
 
-    pub fn parse_in_game_player_info(&self) -> Vec<PlayerInGame> {
+    pub(crate) fn parse_in_game_player_info(&self) -> Vec<PlayerInGame> {
         fn parse_tr_player(tr_player: ElementRef) -> Result<PlayerInGame, Box<dyn Error>> {
             let td_selector = Selector::parse("td")?;
             let mut td_fields = tr_player.select(&td_selector).skip(1);
@@ -141,7 +144,7 @@ impl DocumentExtractor {
         Self::parse_tr_players(tr_players, &parse_tr_player)
     }
 
-    pub fn parse_steam_player_info(&self) -> Vec<PlayerInfo> {
+    pub(crate) fn parse_steam_player_info(&self) -> Vec<PlayerInfo> {
         fn parse_tr_player(tr_player: ElementRef) -> Result<PlayerInfo, Box<dyn Error>> {
             let td_selector = Selector::parse("td")?;
             let mut td_fields = tr_player.select(&td_selector).skip(1);
@@ -197,8 +200,66 @@ impl DocumentExtractor {
         Self::parse_tr_players(tr_players, &parse_tr_player)
     }
 
-    pub fn parse_current_map_info(&self) -> Result<String, Box<dyn Error>> {
-        todo!()
+    fn parse_current_game(&self) -> Result<Vec<scraper::element_ref::ElementRef>, Box<dyn Error>> {
+        let current_game_selector = Selector::parse(r#"dl[id="currentGame"]"#)?;
+        let dd_selector = Selector::parse("dd")?;
+        let current_game = &self
+            .document
+            .select(&current_game_selector)
+            .next()
+            .ok_or(r#"dl[id="currentGame"] not found"#)?;
+        Ok(current_game.select(&dd_selector).collect())
+    }
+
+    fn parse_current_rules(&self) -> Result<Vec<scraper::element_ref::ElementRef>, Box<dyn Error>> {
+        let current_rules_selector = Selector::parse(r#"dl[id="currentRules"]"#)?;
+        let dd_selector = Selector::parse("dd")?;
+        let current_rules = &self
+            .document
+            .select(&current_rules_selector)
+            .next()
+            .ok_or(r#"dl[id="currentRules"] not found"#)?;
+        Ok(current_rules.select(&dd_selector).collect())
+    }
+
+    pub(crate) fn parse_current_map_info(&self) -> Result<GameInfo, Box<dyn Error>> {
+        let current_game = self.parse_current_game()?;
+        let current_rules = self.parse_current_rules()?;
+        if current_game.is_empty() || current_rules.is_empty() {
+            error!(
+                "current game length: {}, current rules length: {}",
+                current_game.len(),
+                current_rules.len()
+            );
+            return Err("Current game or rules not found".into());
+        }
+        let game_type = current_game[2].inner_html();
+        let map_name = current_game[3].inner_html();
+        let wave = current_rules[0].inner_html();
+        let difficulty = KfDifficulty::map(&current_rules[1].inner_html())?;
+        let players = current_rules[2].inner_html();
+
+        let (current_wave, max_wave) = wave
+            .split_once('/')
+            .ok_or("Wave does not contain char '/'")?;
+        let (current_players, max_players) = players
+            .split_once('/')
+            .ok_or("Wave does not contain char '/'")?;
+
+        let current_wave = current_wave.parse()?;
+        let max_waves = max_wave.parse()?;
+        let current_players = current_players.parse()?;
+        let max_players = max_players.parse()?;
+
+        Ok(GameInfo {
+            max_waves,
+            current_wave,
+            max_players,
+            current_players,
+            map_name,
+            difficulty,
+            game_type,
+        })
     }
 
     pub fn parse_summary_info(&self) -> Result<String, Box<dyn Error>> {

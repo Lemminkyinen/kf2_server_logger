@@ -7,7 +7,7 @@ use std::io::Write;
 use std::{error::Error, net::IpAddr};
 
 #[derive(Debug, Clone)]
-pub enum Perk {
+pub(crate) enum Perk {
     Berserker,
     Commando,
     Support,
@@ -21,7 +21,7 @@ pub enum Perk {
 }
 
 impl Perk {
-    pub fn map(input: &str) -> Result<Perk, Box<dyn Error>> {
+    pub(super) fn map(input: &str) -> Result<Perk, Box<dyn Error>> {
         let mut input = input.to_lowercase();
         input.retain(|c| !c.is_whitespace());
         match input.as_str() {
@@ -63,24 +63,24 @@ pub struct Kf2WebPlayer {
 }
 
 #[derive(Debug)]
-pub struct PlayerInGame {
-    pub name: String,
-    pub perk: Perk,
-    pub dosh: u32,
-    pub health: u32,
-    pub kills: u32,
-    pub ping: u32,
-    pub admin: bool,
+pub(crate) struct PlayerInGame {
+    pub(crate) name: String,
+    pub(crate) perk: Perk,
+    pub(crate) dosh: u32,
+    pub(crate) health: u32,
+    pub(crate) kills: u32,
+    pub(crate) ping: u32,
+    pub(crate) admin: bool,
 }
 
 #[derive(Debug, Clone)]
-pub struct PlayerInfo {
-    pub name: String,
-    pub ping: u32,
-    pub ip: IpAddr,
-    pub unique_net_id: String,
-    pub steam_id: u64,
-    pub admin: bool,
+pub(crate) struct PlayerInfo {
+    pub(crate) name: String,
+    pub(crate) ping: u32,
+    pub(crate) ip: IpAddr,
+    pub(crate) unique_net_id: String,
+    pub(crate) steam_id: u64,
+    pub(crate) admin: bool,
 }
 
 pub trait Player {}
@@ -88,3 +88,46 @@ pub trait Player {}
 impl Player for PlayerInfo {}
 
 impl Player for PlayerInGame {}
+
+#[derive(Debug, Clone)]
+pub(crate) enum KfDifficulty {
+    Normal,
+    Hard,
+    Suicidal,
+    HellOnEarth,
+}
+
+impl KfDifficulty {
+    pub(super) fn map(input: &str) -> Result<Self, Box<dyn Error>> {
+        match input {
+            "Normal" => Ok(KfDifficulty::Normal),
+            "Hard" => Ok(KfDifficulty::Hard),
+            "Suicidal" => Ok(KfDifficulty::Suicidal),
+            "Hell on Earth" => Ok(KfDifficulty::HellOnEarth),
+            _ => Err(format!("Unknown difficulty {}", input).into()),
+        }
+    }
+}
+
+impl ToString for KfDifficulty {
+    fn to_string(&self) -> String {
+        match self {
+            KfDifficulty::Normal => "Normal".to_string(),
+            KfDifficulty::Hard => "Hard".to_string(),
+            KfDifficulty::Suicidal => "Suicidal".to_string(),
+            KfDifficulty::HellOnEarth => "Hell on Earth".to_string(),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct GameInfo {
+    pub(crate) max_waves: u16,
+    pub(crate) current_wave: u16,
+    pub(crate) max_players: u16,
+    pub(crate) current_players: u16,
+    pub(crate) map_name: String,
+    pub(crate) difficulty: KfDifficulty,
+    pub(crate) game_type: String,
+    // pub(super) boss_name: String,
+}
