@@ -225,14 +225,17 @@ impl KfDbManager {
         game_info: GameSession,
     ) -> Result<u32, Box<dyn Error>> {
         let mut connection = self.get_connection()?;
+        let map_name = game_info.map_name.clone();
         let db_id;
         if let Some(id) = game_info.db_id {
             db_id = id;
             let game_session = game_info.into();
             Self::update_game_session(&mut connection, game_session)?;
+            info!("Updated game session: {}, {}", db_id, map_name);
         } else {
             let game_session = game_info.into();
             db_id = Self::insert_game_session(&mut connection, game_session)?;
+            info!("New game session: {}, {}", db_id, map_name);
         }
         Ok(db_id)
     }
