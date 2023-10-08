@@ -115,7 +115,9 @@ impl Kf2Logger {
         let document = DocumentExtractor::new(&text);
         drop(text);
         let token = document.parse_form_token()?;
-        let session_id = headers.get_cookie("sessionid").unwrap();
+        let session_id = headers
+            .get_cookie("sessionid")
+            .ok_or("Session id not found")?;
 
         let form = AuthForm {
             token,
@@ -254,9 +256,6 @@ impl Kf2Logger {
         {
             return Ok(vec![]);
         }
-        // info!("game session: {:?}", self.game_session);
-        // info!("unique players: {:?}", self.unique_players);
-        // info!("in game players: {:?}", self.in_game_players);
         let player_sessions;
         let game_session = self
             .game_session
@@ -280,7 +279,7 @@ impl Kf2Logger {
                 .zip(in_game_players)
                 .map(|(unique_player, in_game_player)| PlayerSession {
                     db_id: None,
-                    game_session_id: game_session.db_id.unwrap(),
+                    game_session_id: game_session.db_id.expect("Game session id not found!"),
                     steam_id: unique_player.steam_id,
                     perk: in_game_player.perk.to_string(),
                     kills: in_game_player.kills,
