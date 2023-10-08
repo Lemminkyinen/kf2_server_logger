@@ -44,6 +44,19 @@ diesel::table! {
 }
 
 diesel::table! {
+    player_sessions (id) {
+        id -> Unsigned<Integer>,
+        game_session_id -> Unsigned<Integer>,
+        steam_id -> Unsigned<Bigint>,
+        #[max_length = 50]
+        perk -> Varchar,
+        kills -> Unsigned<Integer>,
+        started_at -> Timestamp,
+        ended_at -> Timestamp,
+    }
+}
+
+diesel::table! {
     unique_players (steam_id) {
         steam_id -> Unsigned<Bigint>,
         #[max_length = 50]
@@ -58,10 +71,13 @@ diesel::table! {
 }
 
 diesel::joinable!(ip_addresses -> unique_players (steam_id));
+diesel::joinable!(player_sessions -> game_sessions (game_session_id));
+diesel::joinable!(player_sessions -> unique_players (steam_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     current_players,
     game_sessions,
     ip_addresses,
+    player_sessions,
     unique_players,
 );

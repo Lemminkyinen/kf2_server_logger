@@ -12,4 +12,4 @@ CREATE TABLE game_sessions (
     started_at TIMESTAMP NOT NULL,
     ended_at TIMESTAMP NULL,
     PRIMARY KEY (id)
-) ENGINE = InnoDB DEFAULT CHARSET = utf16 COLLATE utf16_swedish_ci;
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE utf8mb4_swedish_ci;

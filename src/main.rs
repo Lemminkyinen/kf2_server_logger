@@ -28,5 +28,8 @@ async fn main() {
         if let Err(err) = kf2.log_game_session().await {
             error!("{}", err);
         }
+        if let Err(err) = kf2.log_player_sessions().await {
+            error!("{}", err);
+        }
     }
 }

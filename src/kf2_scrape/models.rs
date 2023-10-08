@@ -62,7 +62,7 @@ pub struct Kf2WebPlayer {
     pub steam_id: u64,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct PlayerInGame {
     pub(crate) name: String,
     pub(crate) perk: Perk,

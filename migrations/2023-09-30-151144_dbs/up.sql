@@ -9,7 +9,7 @@ CREATE TABLE
     `created` datetime NOT NULL DEFAULT current_timestamp(),
     `last_seen` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
     PRIMARY KEY (`steam_id`)
-  ) ENGINE = InnoDB DEFAULT CHARSET = utf16 COLLATE utf16_swedish_ci;
+  ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE utf8mb4_swedish_ci;
 
 CREATE TABLE
   `ip_addresses` (
@@ -19,4 +19,4 @@ CREATE TABLE
     `created` datetime NOT NULL DEFAULT current_timestamp(),
     PRIMARY KEY (`id`),
     FOREIGN KEY (`steam_id`) REFERENCES `unique_players` (`steam_id`)
-  ) ENGINE = InnoDB DEFAULT CHARSET = utf16 COLLATE utf16_swedish_ci;
+  ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE utf8mb4_swedish_ci;

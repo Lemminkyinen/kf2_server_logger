@@ -1,5 +1,5 @@
 use crate::{
-    kf2_log::logger::GameSession,
+    kf2_log::logger::{GameSession, PlayerSession},
     kf2_scrape::models::{KfDifficulty, Perk, PlayerInGame, PlayerInfo},
 };
 use chrono;
@@ -166,6 +166,72 @@ impl Into<GameSessionDbU> for GameSession {
             difficulty: self.difficulty.to_string(),
             game_type: self.game_type,
             boss: self.boss,
+            started_at: self.started_at,
+            ended_at: self.ended_at,
+        }
+    }
+}
+
+#[derive(Clone, Insertable)]
+#[diesel(table_name = crate::schema::player_sessions)]
+#[diesel(check_for_backend(diesel::mysql::Mysql))]
+pub(crate) struct PlayerSessionDbI {
+    pub(crate) game_session_id: u32,
+    pub(crate) steam_id: u64,
+    pub(crate) perk: String,
+    pub(crate) kills: u32,
+    pub(crate) started_at: chrono::NaiveDateTime,
+    pub(crate) ended_at: chrono::NaiveDateTime,
+}
+
+impl PlayerSessionDbI {
+    pub(crate) fn into_session(self, id: u32) -> PlayerSession {
+        PlayerSession {
+            db_id: Some(id),
+            game_session_id: self.game_session_id,
+            steam_id: self.steam_id,
+            perk: self.perk,
+            kills: self.kills,
+            started_at: self.started_at,
+            ended_at: self.ended_at,
+        }
+    }
+}
+
+impl Into<PlayerSessionDbI> for PlayerSession {
+    fn into(self) -> PlayerSessionDbI {
+        PlayerSessionDbI {
+            game_session_id: self.game_session_id,
+            steam_id: self.steam_id,
+            perk: self.perk.to_string(),
+            kills: self.kills,
+            started_at: self.started_at,
+            ended_at: self.ended_at,
+        }
+    }
+}
+
+#[derive(Clone, Insertable, AsChangeset, Selectable)]
+#[diesel(table_name = crate::schema::player_sessions)]
+#[diesel(check_for_backend(diesel::mysql::Mysql))]
+pub(crate) struct PlayerSessionDbU {
+    pub(crate) id: u32,
+    pub(crate) game_session_id: u32,
+    pub(crate) steam_id: u64,
+    pub(crate) perk: String,
+    pub(crate) kills: u32,
+    pub(crate) started_at: chrono::NaiveDateTime,
+    pub(crate) ended_at: chrono::NaiveDateTime,
+}
+
+impl Into<PlayerSessionDbU> for PlayerSession {
+    fn into(self) -> PlayerSessionDbU {
+        PlayerSessionDbU {
+            id: self.db_id.expect("no player session id!"),
+            game_session_id: self.game_session_id,
+            steam_id: self.steam_id,
+            perk: self.perk.to_string(),
+            kills: self.kills,
             started_at: self.started_at,
             ended_at: self.ended_at,
         }

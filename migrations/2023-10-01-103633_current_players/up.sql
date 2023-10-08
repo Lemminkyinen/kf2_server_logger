@@ -9,4 +9,4 @@ CREATE TABLE
         `kills` INT UNSIGNED NOT NULL,
         `ping` INT UNSIGNED NOT NULL,     
         PRIMARY KEY (`id`)   
-    ) ENGINE = InnoDB DEFAULT CHARSET = utf16 COLLATE utf16_swedish_ci;
+    ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE utf8mb4_swedish_ci;

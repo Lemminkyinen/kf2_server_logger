@@ -1,7 +1,7 @@
 use super::models::KfDbManager;
-use super::models_db::{GameSessionDbI, PlayerDbI};
+use super::models_db::{GameSessionDbI, PlayerDbI, PlayerSessionDbI, PlayerSessionDbU};
 use crate::kf2_database::models_db::GameSessionDbU;
-use crate::kf2_log::logger::GameSession;
+use crate::kf2_log::logger::{GameSession, PlayerSession};
 use crate::{
     kf2_database::models_db::{CurrentPlayer, IpAddressDbI, IpAddressDbQ, PlayerDbQ},
     kf2_scrape::models::{GameInfo, PlayerInGame, PlayerInfo},
@@ -238,5 +238,95 @@ impl KfDbManager {
             info!("New game session: {}, {}", db_id, map_name);
         }
         Ok(db_id)
+    }
+
+    pub(super) fn insert_player_session(
+        connection: &mut PooledConnection<ConnectionManager<MysqlConnection>>,
+        player: &PlayerSessionDbI,
+    ) -> Result<u32, Box<dyn Error>> {
+        use crate::schema::player_sessions::dsl::*;
+        diesel::insert_into(player_sessions)
+            .values(player)
+            .execute(connection)?;
+        let db_id = player_sessions
+            .select(diesel::dsl::max(id))
+            .load::<Option<u32>>(connection)?
+            .first()
+            .ok_or("no player session rows")?
+            .ok_or("no player session id")?;
+        Ok(db_id)
+    }
+
+    pub(super) fn update_player_session(
+        connection: &mut PooledConnection<ConnectionManager<MysqlConnection>>,
+        player: &PlayerSessionDbU,
+    ) -> Result<(), Box<dyn Error>> {
+        use crate::schema::player_sessions::dsl::*;
+        diesel::update(player_sessions.find(player.id))
+            .set(player)
+            .execute(connection)?;
+        Ok(())
+    }
+
+    pub(crate) async fn log_player_sessions(
+        &mut self,
+        players: Vec<PlayerSession>,
+    ) -> Result<Vec<PlayerSession>, Box<dyn Error>> {
+        let mut connection = self.get_connection()?;
+
+        let is_new_player = |p: &PlayerSession| p.db_id.is_none();
+
+        let new_players: Vec<PlayerSessionDbI> = players
+            .clone()
+            .into_iter()
+            .filter_map(|np| {
+                if is_new_player(&np) {
+                    Some(np.into())
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        let existing_players: Vec<PlayerSessionDbU> = players
+            .into_iter()
+            .filter_map(|ep| {
+                if is_new_player(&ep) {
+                    None
+                } else {
+                    Some(ep.into())
+                }
+            })
+            .collect();
+
+        let mut updated_player_sessions: Vec<PlayerSession> = new_players
+            .into_iter()
+            .filter_map(|np| {
+                if let Ok(id) = Self::insert_player_session(&mut connection, &np) {
+                    info!("Inserted new player session: {}", id);
+                    Some(np.into_session(id))
+                } else {
+                    error!("Error inserting player session");
+                    None
+                }
+            })
+            .collect();
+
+        let existing_players: Vec<PlayerSession> = existing_players
+            .into_iter()
+            .filter_map(|ep| {
+                if let Ok(_) = Self::update_player_session(&mut connection, &ep) {
+                    info!("Updated player session: {}", ep.id);
+                    Some(ep.into())
+                } else {
+                    error!("Error updating player session");
+                    None
+                }
+            })
+            .collect();
+
+        updated_player_sessions.extend(existing_players.into_iter().map(|ep| ep.into()));
+
+        Ok(updated_player_sessions)
     }
 }
