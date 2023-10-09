@@ -274,13 +274,13 @@ impl KfDbManager {
     ) -> Result<Vec<PlayerSession>, Box<dyn Error>> {
         let mut connection = self.get_connection()?;
 
-        let is_new_player = |p: &PlayerSession| p.db_id.is_none();
+        let is_new_player_session = |p: &PlayerSession| p.db_id.is_none();
 
         let new_players: Vec<PlayerSessionDbI> = players
             .clone()
             .into_iter()
             .filter_map(|np| {
-                if is_new_player(&np) {
+                if is_new_player_session(&np) {
                     Some(np.into())
                 } else {
                     None
@@ -291,7 +291,7 @@ impl KfDbManager {
         let existing_players: Vec<PlayerSessionDbU> = players
             .into_iter()
             .filter_map(|ep| {
-                if is_new_player(&ep) {
+                if is_new_player_session(&ep) {
                     None
                 } else {
                     Some(ep.into())
