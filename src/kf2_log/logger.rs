@@ -298,16 +298,7 @@ impl Kf2Logger {
         new_player_sessions: Vec<PlayerSession>,
     ) -> Result<Vec<PlayerSession>, Box<dyn Error>> {
         let mut updated_player_sessions = vec![];
-        let current_game_id = match self.game_session.as_ref() {
-            Some(game_session) => match game_session.db_id {
-                Some(db_id) => db_id,
-                None => return Err("Game session id not found".into()),
-            },
-            None => return Err("Game session not found".into()),
-        };
         if let Some(old_player_sessions) = self.player_sessions.as_mut() {
-            old_player_sessions
-                .retain(|player_session| player_session.game_session_id != current_game_id);
             // Add new player sessions to the sessions list
             updated_player_sessions.extend(new_player_sessions.clone().into_iter().filter(
                 |new_player_session| {
