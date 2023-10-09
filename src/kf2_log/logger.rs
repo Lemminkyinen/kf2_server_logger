@@ -310,6 +310,7 @@ impl Kf2Logger {
                         .is_none()
                 },
             ));
+
             // Add updated existing players to the sessions list
             updated_player_sessions.extend(old_player_sessions.clone().into_iter().filter_map(
                 |mut old_player_session| {
@@ -321,10 +322,15 @@ impl Kf2Logger {
                                 new_player_session.steam_id == old_player_session.steam_id
                             })
                     {
-                        old_player_session.ended_at = chrono::Utc::now().naive_utc();
-                        old_player_session.kills = new_player_session.kills;
-                        old_player_session.perk = new_player_session.perk;
-                        Some(old_player_session)
+                        if old_player_session.game_session_id == new_player_session.game_session_id
+                        {
+                            old_player_session.ended_at = chrono::Utc::now().naive_utc();
+                            old_player_session.kills = new_player_session.kills;
+                            old_player_session.perk = new_player_session.perk;
+                            Some(old_player_session)
+                        } else {
+                            Some(new_player_session)
+                        }
                     } else {
                         None
                     }
