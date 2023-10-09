@@ -306,6 +306,8 @@ impl Kf2Logger {
             None => return Err("Game session not found".into()),
         };
         if let Some(old_player_sessions) = self.player_sessions.as_mut() {
+            old_player_sessions
+                .retain(|player_session| player_session.game_session_id != current_game_id);
             // Add new player sessions to the sessions list
             updated_player_sessions.extend(new_player_sessions.clone().into_iter().filter(
                 |new_player_session| {
@@ -313,7 +315,6 @@ impl Kf2Logger {
                         .iter()
                         .find(|old_player_session| {
                             old_player_session.steam_id == new_player_session.steam_id
-                                || old_player_session.game_session_id == current_game_id
                         })
                         .is_none()
                 },
