@@ -1,12 +1,6 @@
-use diesel::deserialize::FromSql;
-use diesel::expression::AsExpression;
-use diesel::mysql::Mysql;
-use diesel::serialize::{self, Output, ToSql};
-use diesel::sql_types::VarChar;
-use std::io::Write;
 use std::{error::Error, net::IpAddr};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Perk {
     Berserker,
     Commando,
@@ -18,10 +12,11 @@ pub(crate) enum Perk {
     Sharpshooter,
     Survivalist,
     Swat,
+    NotSelected,
 }
 
 impl Perk {
-    pub(super) fn map(input: &str) -> Result<Perk, Box<dyn Error>> {
+    pub(super) fn map(input: &str) -> Result<Self, Box<dyn Error>> {
         let mut input = input.to_lowercase();
         input.retain(|c| !c.is_whitespace());
         match input.as_str() {
@@ -35,7 +30,8 @@ impl Perk {
             "sharpshooter" => Ok(Perk::Sharpshooter),
             "survivalist" => Ok(Perk::Survivalist),
             "swat" => Ok(Perk::Swat),
-            e => Err(format!("Perk {} not found", e).into()),
+            "" => Ok(Perk::NotSelected),
+            _ => Err("Invalid perk".into()),
         }
     }
 }
@@ -43,23 +39,19 @@ impl Perk {
 impl ToString for Perk {
     fn to_string(&self) -> String {
         match self {
-            Perk::Berserker => "Berserker".to_string(),
-            Perk::Commando => "Commando".to_string(),
-            Perk::Support => "Support".to_string(),
-            Perk::FieldMedic => "Field Medic".to_string(),
-            Perk::Demolitionist => "Demolitionist".to_string(),
-            Perk::Firebug => "Firebug".to_string(),
-            Perk::Gunslinger => "Gunslinger".to_string(),
-            Perk::Sharpshooter => "Sharpshooter".to_string(),
-            Perk::Survivalist => "Survivalist".to_string(),
-            Perk::Swat => "Swat".to_string(),
+            Perk::Berserker => String::from("Berserker"),
+            Perk::Commando => String::from("Commando"),
+            Perk::Support => String::from("Support"),
+            Perk::FieldMedic => String::from("Field Medic"),
+            Perk::Demolitionist => String::from("Demolitionist"),
+            Perk::Firebug => String::from("Firebug"),
+            Perk::Gunslinger => String::from("Gunslinger"),
+            Perk::Sharpshooter => String::from("Sharpshooter"),
+            Perk::Survivalist => String::from("Survivalist"),
+            Perk::Swat => String::from("Swat"),
+            Perk::NotSelected => String::from("Not Selected"),
         }
     }
-}
-
-pub struct Kf2WebPlayer {
-    pub name: String,
-    pub steam_id: u64,
 }
 
 #[derive(Debug, Clone)]
@@ -84,12 +76,10 @@ pub(crate) struct PlayerInfo {
 }
 
 pub trait Player {}
-
 impl Player for PlayerInfo {}
-
 impl Player for PlayerInGame {}
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum KfDifficulty {
     Normal,
     Hard,
@@ -99,11 +89,13 @@ pub(crate) enum KfDifficulty {
 
 impl KfDifficulty {
     pub(super) fn map(input: &str) -> Result<Self, Box<dyn Error>> {
-        match input {
-            "Normal" => Ok(KfDifficulty::Normal),
-            "Hard" => Ok(KfDifficulty::Hard),
-            "Suicidal" => Ok(KfDifficulty::Suicidal),
-            "Hell on Earth" => Ok(KfDifficulty::HellOnEarth),
+        let mut input = input.to_lowercase();
+        input.retain(|c| !c.is_whitespace());
+        match input.as_str() {
+            "normal" => Ok(KfDifficulty::Normal),
+            "hard" => Ok(KfDifficulty::Hard),
+            "suicidal" => Ok(KfDifficulty::Suicidal),
+            "hellonearth" => Ok(KfDifficulty::HellOnEarth),
             _ => Err(format!("Unknown difficulty {}", input).into()),
         }
     }
@@ -112,10 +104,10 @@ impl KfDifficulty {
 impl ToString for KfDifficulty {
     fn to_string(&self) -> String {
         match self {
-            KfDifficulty::Normal => "Normal".to_string(),
-            KfDifficulty::Hard => "Hard".to_string(),
-            KfDifficulty::Suicidal => "Suicidal".to_string(),
-            KfDifficulty::HellOnEarth => "Hell on Earth".to_string(),
+            KfDifficulty::Normal => String::from("Normal"),
+            KfDifficulty::Hard => String::from("Hard"),
+            KfDifficulty::Suicidal => String::from("Suicidal"),
+            KfDifficulty::HellOnEarth => String::from("Hell on Earth"),
         }
     }
 }
@@ -130,4 +122,74 @@ pub(crate) struct GameInfo {
     pub(crate) difficulty: KfDifficulty,
     pub(crate) game_type: String,
     // pub(super) boss_name: String,
+}
+
+#[cfg(test)]
+mod tests_perk {
+    use super::*;
+
+    #[test]
+    fn test_perk_map_() {
+        let perk = Perk::map("Berserker").unwrap();
+        assert_eq!(perk, Perk::Berserker);
+
+        let perk = Perk::map("Field Medic").unwrap();
+        assert_eq!(perk, Perk::FieldMedic);
+    }
+
+    #[test]
+    fn test_perk_map_error() {
+        let perk = Perk::map("kissa");
+        assert!(perk.is_err());
+    }
+
+    #[test]
+    fn test_perk_empty() {
+        let perk = Perk::map("").unwrap();
+        assert_eq!(perk, Perk::NotSelected);
+    }
+
+    #[test]
+    fn test_perk_to_string() {
+        let perk = Perk::FieldMedic;
+        assert_eq!(perk.to_string(), "Field Medic");
+
+        let perk = Perk::Swat;
+        assert_eq!(perk.to_string(), "Swat");
+
+        let perk = Perk::NotSelected;
+        assert_eq!(perk.to_string(), "Not Selected");
+    }
+}
+
+#[cfg(test)]
+mod tests_kf_difficulty {
+    use super::*;
+
+    #[test]
+    fn test_kf_difficulty_map_() {
+        let difficulty = KfDifficulty::map("Normal").unwrap();
+        assert_eq!(difficulty, KfDifficulty::Normal);
+
+        let difficulty = KfDifficulty::map("Hell on Earth").unwrap();
+        assert_eq!(difficulty, KfDifficulty::HellOnEarth);
+    }
+
+    #[test]
+    fn test_kf_difficulty_map_error() {
+        let difficulty = KfDifficulty::map("kissa");
+        assert!(difficulty.is_err());
+    }
+
+    #[test]
+    fn test_kf_difficulty_to_string() {
+        let difficulty = KfDifficulty::Normal;
+        assert_eq!(difficulty.to_string(), "Normal");
+
+        let difficulty = KfDifficulty::HellOnEarth;
+        assert_eq!(difficulty.to_string(), "Hell on Earth");
+
+        let difficulty = KfDifficulty::Suicidal;
+        assert_eq!(difficulty.to_string(), "Suicidal");
+    }
 }

@@ -1,5 +1,5 @@
+use super::models::{GameInfo, KfDifficulty, Perk, Player, PlayerInGame, PlayerInfo};
 use log::error;
-// use crate::model::Player;
 use reqwest::header::HeaderMap;
 use scraper::{ElementRef, Html, Selector};
 use std::{
@@ -7,10 +7,6 @@ use std::{
     error::Error,
     net::{IpAddr, Ipv4Addr},
 };
-
-use crate::schema::current_players;
-
-use super::models::{GameInfo, KfDifficulty, Perk, Player, PlayerInGame, PlayerInfo};
 pub struct DocumentExtractor {
     document: Html,
 }
@@ -36,7 +32,7 @@ impl DocumentExtractor {
         Ok(value.to_string())
     }
 
-    fn parse_player_table(&self) -> Result<Vec<scraper::element_ref::ElementRef>, Box<dyn Error>> {
+    fn parse_player_table(&self) -> Result<Vec<ElementRef>, Box<dyn Error>> {
         let table_selector = Selector::parse(r#"table[id="players"]"#)?;
         let tbody_selector = Selector::parse("tbody")?;
         let tr_selector = Selector::parse("tr")?;
@@ -65,7 +61,7 @@ impl DocumentExtractor {
     }
 
     fn parse_tr_players<T>(
-        tr_players: Vec<scraper::element_ref::ElementRef>,
+        tr_players: Vec<ElementRef>,
         f: &dyn Fn(ElementRef) -> Result<T, Box<dyn Error>>,
     ) -> Vec<T>
     where
@@ -260,10 +256,6 @@ impl DocumentExtractor {
             difficulty,
             game_type,
         })
-    }
-
-    pub fn parse_summary_info(&self) -> Result<String, Box<dyn Error>> {
-        todo!()
     }
 }
 

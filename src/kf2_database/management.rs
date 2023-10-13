@@ -1,10 +1,16 @@
-use super::models::KfDbManager;
 use crate::args::Kf2DbArgs;
 use diesel::r2d2::ConnectionManager;
 use diesel::r2d2::Pool;
 use diesel::r2d2::PooledConnection;
 use diesel::MysqlConnection;
 use std::error::Error;
+
+pub struct KfDbManager {
+    pub(super) ip_addr: String,
+    pub(super) username: String,
+    pub(super) password: String,
+    pub(super) pool: Pool<ConnectionManager<MysqlConnection>>,
+}
 
 impl KfDbManager {
     pub(crate) fn new_session(args: Kf2DbArgs) -> Result<Self, Box<dyn Error>> {

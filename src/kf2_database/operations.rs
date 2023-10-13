@@ -1,16 +1,15 @@
-use super::models::KfDbManager;
-use super::models_db::{GameSessionDbI, PlayerDbI, PlayerSessionDbI, PlayerSessionDbU};
-use crate::kf2_database::models_db::GameSessionDbU;
-use crate::kf2_log::logger::{GameSession, PlayerSession};
-use crate::{
-    kf2_database::models_db::{CurrentPlayer, IpAddressDbI, IpAddressDbQ, PlayerDbQ},
-    kf2_scrape::models::{GameInfo, PlayerInGame, PlayerInfo},
+use super::management::KfDbManager;
+use super::models::{
+    CurrentPlayer, GameSessionDbI, GameSessionDbU, IpAddressDbI, IpAddressDbQ, PlayerDbI,
+    PlayerDbQ, PlayerSessionDbI, PlayerSessionDbU,
 };
+use crate::kf2_log::logger::{GameSession, PlayerSession};
+use crate::kf2_scrape::models::{PlayerInGame, PlayerInfo};
 use diesel::mysql::MysqlConnection;
 use diesel::r2d2::{ConnectionManager, PooledConnection};
 use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl};
-use log::{debug, error, info, log_enabled, warn, Level};
-use std::{error::Error, net::Ipv4Addr, thread::current};
+use log::{error, info};
+use std::{error::Error, net::Ipv4Addr};
 use std::{io::ErrorKind, thread};
 
 impl KfDbManager {
@@ -273,38 +272,17 @@ impl KfDbManager {
         players: Vec<PlayerSession>,
     ) -> Result<Vec<PlayerSession>, Box<dyn Error>> {
         let mut connection = self.get_connection()?;
-
         let is_new_player_session = |p: &PlayerSession| p.db_id.is_none();
-
-        let new_players: Vec<PlayerSessionDbI> = players
-            .clone()
-            .into_iter()
-            .filter_map(|np| {
-                if is_new_player_session(&np) {
-                    Some(np.into())
-                } else {
-                    None
-                }
-            })
-            .collect();
-
-        let existing_players: Vec<PlayerSessionDbU> = players
-            .into_iter()
-            .filter_map(|ep| {
-                if is_new_player_session(&ep) {
-                    None
-                } else {
-                    Some(ep.into())
-                }
-            })
-            .collect();
+        let (new_players, existing_players): (Vec<_>, Vec<_>) =
+            players.into_iter().partition(is_new_player_session);
 
         let mut updated_player_sessions: Vec<PlayerSession> = new_players
             .into_iter()
-            .filter_map(|np| {
-                if let Ok(id) = Self::insert_player_session(&mut connection, &np) {
+            .filter_map(|mut np| {
+                if let Ok(id) = Self::insert_player_session(&mut connection, &np.clone().into()) {
                     info!("Inserted new player session: {}", id);
-                    Some(np.into_session(id))
+                    np.db_id = Some(id);
+                    Some(np)
                 } else {
                     error!("Error inserting player session");
                     None
@@ -315,9 +293,9 @@ impl KfDbManager {
         let existing_players: Vec<PlayerSession> = existing_players
             .into_iter()
             .filter_map(|ep| {
-                if let Ok(_) = Self::update_player_session(&mut connection, &ep) {
-                    info!("Updated player session: {}", ep.id);
-                    Some(ep.into())
+                if let Ok(_) = Self::update_player_session(&mut connection, &ep.clone().into()) {
+                    info!("Updated player session: {:?}", ep.db_id);
+                    Some(ep)
                 } else {
                     error!("Error updating player session");
                     None
@@ -329,4 +307,9 @@ impl KfDbManager {
 
         Ok(updated_player_sessions)
     }
+}
+
+#[cfg(test)]
+mod Tests {
+    use super::KfDbManager;
 }

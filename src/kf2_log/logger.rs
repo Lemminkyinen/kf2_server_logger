@@ -1,9 +1,8 @@
 use crate::args::Kf2ServerArgs;
-use crate::kf2_database::models::KfDbManager;
-use crate::kf2_database::models_db::PlayerSessionDbU;
+use crate::kf2_database::management::KfDbManager;
+use crate::kf2_database::models::PlayerSessionDbU;
 use crate::kf2_scrape::models::{GameInfo, KfDifficulty, PlayerInGame, PlayerInfo};
 use crate::kf2_scrape::parse::{DocumentExtractor, HeaderExtractor};
-use log::{error, info};
 use reqwest::{Client, ClientBuilder};
 use serde::{Deserialize, Serialize};
 use std::error::Error;
@@ -93,12 +92,6 @@ impl Kf2Url {
             players,
         })
     }
-}
-
-fn write_text_to_file(filename: &str, text: &str) -> io::Result<()> {
-    let mut file = File::create(filename)?;
-    file.write_all(text.as_bytes())?;
-    Ok(())
 }
 
 impl Kf2Logger {
