@@ -6,8 +6,6 @@ use crate::kf2_scrape::parse::{DocumentExtractor, HeaderExtractor};
 use reqwest::{Client, ClientBuilder};
 use serde::{Deserialize, Serialize};
 use std::error::Error;
-use std::fs::File;
-use std::io::{self, Write};
 use url::Url;
 
 #[derive(Debug, Clone)]

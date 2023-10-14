@@ -6,7 +6,8 @@ pub mod schema;
 
 use kf2_database::management::KfDbManager;
 use kf2_log::logger::Kf2Logger;
-use log::error;
+use log::{error, info};
+use tokio::time::Instant;
 
 #[tokio::main]
 async fn main() {
@@ -19,17 +20,29 @@ async fn main() {
     let mut interval = tokio::time::interval(std::time::Duration::from_secs(10));
     '_log: loop {
         interval.tick().await;
+        let start = Instant::now();
         if let Err(err) = kf2.log_unique_players().await {
             error!("{}", err);
         }
+        let duration = start.elapsed();
+        info!("Log Unique Players Duration: {:?}", duration);
+        let start = Instant::now();
         if let Err(err) = kf2.loq_in_game_players().await {
             error!("{}", err);
         }
+        let duration = start.elapsed();
+        info!("Loq In Game Players Duration: {:?}", duration);
+        let start = Instant::now();
         if let Err(err) = kf2.log_game_session().await {
             error!("{}", err);
         }
+        let duration = start.elapsed();
+        info!("Log Game Session Duration: {:?}", duration);
+        let start = Instant::now();
         if let Err(err) = kf2.log_player_sessions().await {
             error!("{}", err);
         }
+        let duration = start.elapsed();
+        info!("Log Player Sessions Duration: {:?}", duration);
     }
 }
