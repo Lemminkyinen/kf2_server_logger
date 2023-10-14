@@ -153,7 +153,7 @@ impl DocumentExtractor {
                 let player_in_game = ElementParse::player_in_game(td_fields)?;
                 Ok(PlayerData::PlayerInGame(player_in_game))
             }
-            8 => {
+            9 => {
                 let player_info = ElementParse::player_info(td_fields)?;
                 Ok(PlayerData::PlayerInfo(player_info))
             }
@@ -497,7 +497,7 @@ mod tests_element_parse {
         <td>76561198</td>
         <td></td>
         <td class="center">Yes</td>
-        <td class="center">Yes</td>
+        <td></td>
         </tr>
         </tbody>
         </table>"#;
@@ -755,6 +755,7 @@ mod tests_document_extractor {
                 <td class="center"></td>
                 <td class="center">No</td>
                 <td class="center"></td>
+                <td></td>
             </tr>
             <tr class="odd">
                 <td style="background: transparent; color: transparent;">&#160;</td>
@@ -766,6 +767,7 @@ mod tests_document_extractor {
                 <td></td>
                 <td class="center">Yes</td>
                 <td class="center">Yes</td>
+                <td></td>
             </tr>
             <tr class="even">
                 <td style="background: transparent; color: transparent;">&#160;</td>
@@ -777,6 +779,7 @@ mod tests_document_extractor {
                 <td class="center"></td>
                 <td class="center">No</td>
                 <td class="center"></td>
+                <td></td>
             </tr>
             <tr class="odd">
                 <td style="background: transparent; color: transparent;">&#160;</td>
@@ -788,6 +791,7 @@ mod tests_document_extractor {
                 <td class="center"></td>
                 <td class="center">No</td>
                 <td class="center"></td>
+                <td></td>
             </tr>"#,
                 )
             } else {
@@ -864,7 +868,6 @@ mod tests_document_extractor {
 
     #[test]
     fn test_parse_steam_player_info() {
-        env_logger::init();
         let document = get_steam_player_table_document(true);
         let extractor = DocumentExtractor::new(&document);
         let players = extractor.parse_steam_player_info();
