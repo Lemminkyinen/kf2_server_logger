@@ -760,9 +760,9 @@ mod tests_document_extractor {
                 <td style="background: transparent; color: transparent;">&#160;</td>
                 <td>Gooby</td>
                 <td class="right">0</td>
-                <td>192.168.1.100</td>
-                <td>0x01100001049DE279</td>
-                <td>76561198037721721</td>
+                <td>127.0.0.1</td>
+                <td>0x011000049</td>
+                <td>765198721721</td>
                 <td></td>
                 <td class="center">Yes</td>
                 <td class="center">Yes</td>
