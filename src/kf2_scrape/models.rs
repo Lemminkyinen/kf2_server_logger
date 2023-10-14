@@ -54,7 +54,7 @@ impl ToString for Perk {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct PlayerInGame {
     pub(crate) name: String,
     pub(crate) perk: Perk,
@@ -65,7 +65,7 @@ pub(crate) struct PlayerInGame {
     pub(crate) admin: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct PlayerInfo {
     pub(crate) name: String,
     pub(crate) ping: u32,
@@ -75,9 +75,32 @@ pub(crate) struct PlayerInfo {
     pub(crate) admin: bool,
 }
 
-pub trait Player {}
-impl Player for PlayerInfo {}
-impl Player for PlayerInGame {}
+pub(super) enum PlayerData {
+    PlayerInfo(PlayerInfo),
+    PlayerInGame(PlayerInGame),
+}
+
+impl PlayerData {
+    pub(super) fn into_p_info(self) -> Option<PlayerInfo> {
+        match self {
+            PlayerData::PlayerInfo(player_info) => Some(player_info),
+            _ => {
+                log::error!("Unknown PlayerData p_info");
+                None
+            }
+        }
+    }
+
+    pub(super) fn into_p_in_game(self) -> Option<PlayerInGame> {
+        match self {
+            PlayerData::PlayerInGame(player_in_game) => Some(player_in_game),
+            _ => {
+                log::error!("Unknown PlayerData p_in_game");
+                None
+            }
+        }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum KfDifficulty {
@@ -164,6 +187,8 @@ mod tests_perk {
 
 #[cfg(test)]
 mod tests_kf_difficulty {
+    use std::net::Ipv4Addr;
+
     use super::*;
 
     #[test]
@@ -191,5 +216,53 @@ mod tests_kf_difficulty {
 
         let difficulty = KfDifficulty::Suicidal;
         assert_eq!(difficulty.to_string(), "Suicidal");
+    }
+
+    #[test]
+    fn test_player_data_into_p_info() {
+        let player_data = PlayerData::PlayerInfo(PlayerInfo {
+            name: String::from("name"),
+            ping: 0,
+            ip: IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)),
+            unique_net_id: String::from(""),
+            steam_id: 0,
+            admin: false,
+        });
+        assert_eq!(
+            player_data.into_p_info(),
+            Some(PlayerInfo {
+                name: String::from("name"),
+                ping: 0,
+                ip: IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)),
+                unique_net_id: String::from(""),
+                steam_id: 0,
+                admin: false
+            })
+        )
+    }
+
+    #[test]
+    fn test_player_data_into_p_in_game() {
+        let player_data = PlayerData::PlayerInGame(PlayerInGame {
+            name: String::from("name"),
+            perk: Perk::Berserker,
+            dosh: 0,
+            health: 0,
+            kills: 0,
+            ping: 0,
+            admin: false,
+        });
+        assert_eq!(
+            player_data.into_p_in_game(),
+            Some(PlayerInGame {
+                name: String::from("name"),
+                perk: Perk::Berserker,
+                dosh: 0,
+                health: 0,
+                kills: 0,
+                ping: 0,
+                admin: false
+            })
+        );
     }
 }

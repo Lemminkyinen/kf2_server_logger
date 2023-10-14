@@ -310,6 +310,6 @@ impl KfDbManager {
 }
 
 #[cfg(test)]
-mod Tests {
+mod tests {
     use super::KfDbManager;
 }
