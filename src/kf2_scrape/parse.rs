@@ -78,6 +78,7 @@ impl ElementParse {
         let ip = ElementParse::ip_addr(td_fields.next(), "IP td not found")?;
         let unique_net_id = ElementParse::string(td_fields.next(), "Unique Net ID td not found")?;
         let steam_id = ElementParse::int(td_fields.next(), "Steam ID td not found")?;
+        td_fields.next();
         let admin = ElementParse::bool(td_fields.next(), "Admin td not found")?;
         Ok(PlayerInfo {
             name,
@@ -152,7 +153,7 @@ impl DocumentExtractor {
                 let player_in_game = ElementParse::player_in_game(td_fields)?;
                 Ok(PlayerData::PlayerInGame(player_in_game))
             }
-            9 => {
+            8 => {
                 let player_info = ElementParse::player_info(td_fields)?;
                 Ok(PlayerData::PlayerInfo(player_info))
             }
@@ -489,11 +490,13 @@ mod tests_element_parse {
         <tbody>
         <tr class="even">
         <td style="background: transparent; color: transparent;">&#160;</td>
-        <td>Koira</td>
-        <td>123</td>
-        <td class="right">127.0.0.1</td>
-        <td class="right">ykskaks123</td>
-        <td class="right">12312312</td>
+        <td>Gooby</td>
+        <td class="right">123</td>
+        <td>127.0.0.1</td>
+        <td>0x0110000</td>
+        <td>76561198</td>
+        <td></td>
+        <td class="center">Yes</td>
         <td class="center">Yes</td>
         </tr>
         </tbody>
@@ -503,11 +506,11 @@ mod tests_element_parse {
         let td_selector = Selector::parse("td").unwrap();
         let td_fields = e.select(&td_selector).skip(1);
         let r = ElementParse::player_info(td_fields).unwrap();
-        assert_eq!(r.name, "Koira");
+        assert_eq!(r.name, "Gooby");
         assert_eq!(r.ping, 123);
         assert_eq!(r.ip, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)));
-        assert_eq!(r.unique_net_id, "ykskaks123");
-        assert_eq!(r.steam_id, 12312312);
+        assert_eq!(r.unique_net_id, "0x0110000");
+        assert_eq!(r.steam_id, 76561198);
         assert_eq!(r.admin, true);
     }
 }
@@ -749,22 +752,20 @@ mod tests_document_extractor {
                 <td class="right">127.0.0.1</td>
                 <td class="right">asdasd123</td>
                 <td class="right">123123123</td>
+                <td class="center"></td>
                 <td class="center">No</td>
-                <td class="center"></td>
-                <td class="center"></td>
                 <td class="center"></td>
             </tr>
             <tr class="odd">
                 <td style="background: transparent; color: transparent;">&#160;</td>
-                <td>DeepBDarkBFantasy</td>
-                <td>123</td>
-                <td class="right">127.0.0.1</td>
-                <td class="right">asdasd123</td>
-                <td class="right">123123123</td>
-                <td class="center">No</td>
-                <td class="center"></td>
-                <td class="center"></td>
-                <td class="center"></td>
+                <td>Gooby</td>
+                <td class="right">0</td>
+                <td>192.168.1.100</td>
+                <td>0x01100001049DE279</td>
+                <td>76561198037721721</td>
+                <td></td>
+                <td class="center">Yes</td>
+                <td class="center">Yes</td>
             </tr>
             <tr class="even">
                 <td style="background: transparent; color: transparent;">&#160;</td>
@@ -773,9 +774,8 @@ mod tests_document_extractor {
                 <td class="right">127.0.0.1</td>
                 <td class="right">asdasd123</td>
                 <td class="right">123123123</td>
+                <td class="center"></td>
                 <td class="center">No</td>
-                <td class="center"></td>
-                <td class="center"></td>
                 <td class="center"></td>
             </tr>
             <tr class="odd">
@@ -785,9 +785,8 @@ mod tests_document_extractor {
                 <td class="right">127.0.0.1</td>
                 <td class="right">asdasd123</td>
                 <td class="right">123123123</td>
+                <td class="center"></td>
                 <td class="center">No</td>
-                <td class="center"></td>
-                <td class="center"></td>
                 <td class="center"></td>
             </tr>"#,
                 )
@@ -865,6 +864,7 @@ mod tests_document_extractor {
 
     #[test]
     fn test_parse_steam_player_info() {
+        env_logger::init();
         let document = get_steam_player_table_document(true);
         let extractor = DocumentExtractor::new(&document);
         let players = extractor.parse_steam_player_info();
