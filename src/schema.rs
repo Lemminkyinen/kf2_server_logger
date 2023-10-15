@@ -1,8 +1,7 @@
 // @generated automatically by Diesel CLI.
 
 diesel::table! {
-    current_players (id) {
-        id -> Unsigned<Integer>,
+    current_players (name) {
         #[max_length = 50]
         name -> Varchar,
         #[max_length = 50]
