@@ -167,7 +167,11 @@ impl Kf2Logger {
 
     pub(crate) async fn loq_in_game_players(&mut self) -> Result<(), Box<dyn Error>> {
         let players_in_game = self.get_in_game_players().await?;
-        self.in_game_players = Some(players_in_game.clone());
+        self.in_game_players = if players_in_game.is_empty() {
+            None
+        } else {
+            Some(players_in_game.clone())
+        };
         self.db_connection
             .log_in_game_players(players_in_game)
             .await?;
