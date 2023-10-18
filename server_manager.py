@@ -7,6 +7,7 @@ import schedule
 SERVER_PROCESS = None
 LOGGER_PROCESS = None
 
+
 @dataclass
 class Args:
     server_path: str
@@ -20,19 +21,19 @@ class Args:
     database_password: str
 
 
-def update_server(server_path: str, print: bool = False):
+def update_server(server_path: str, print_line: bool = False):
     command = f"steamcmd +force_install_dir {server_path} +login anonymous +app_update 232130 validate +exit"
     try:
         print("Starting the update process...")
         update_process = subprocess.Popen(command, cwd=server_path, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=1, universal_newlines=True)
-        if print:
+        if print_line:
             for line in update_process.stdout:
                 print(line)
         update_process.wait()
         print("Update process finished.")
     except Exception as e:
         print(e)
-    
+
 
 def start_server(args: Args) -> subprocess.Popen:
     command = f"{args.server_path}/Binaries/Win64/KFGameSteamServer.bin.x86_64 kf-bioticslab"
@@ -76,7 +77,6 @@ def init_all(args: Args) -> tuple[subprocess.Popen, subprocess.Popen]:
 def main():
     global SERVER_PROCESS, LOGGER_PROCESS
     args = Args(
-        
     )
 
     schedule.every().day.at("05:00").do(init_all, args=args)
@@ -87,3 +87,6 @@ def main():
         schedule.run_pending()
         time.sleep(10)
 
+
+if __name__ == "__main__":
+    main()
