@@ -268,6 +268,11 @@ impl Kf2Logger {
         {
             return Ok(vec![]);
         }
+        if let Some(game_session) = &self.game_session {
+            if game_session.db_id.is_none() {
+                return Ok(vec![]);
+            }
+        }
         let player_sessions;
         let game_session = self
             .game_session
