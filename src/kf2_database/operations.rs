@@ -291,7 +291,12 @@ impl KfDbManager {
             .into_iter()
             .filter_map(|mut np| {
                 if let Ok(id) = Self::insert_player_session(&mut connection, &np.clone().into()) {
-                    Self::increment_played_sessions(&mut connection, &np);
+                    if let Err(_) = Self::increment_played_sessions(&mut connection, &np) {
+                        error!(
+                            "Error incrementing played sessions for player: {}",
+                            np.steam_id
+                        );
+                    }
                     info!("Inserted new player session: {}", id);
                     np.db_id = Some(id);
                     Some(np)
