@@ -3,7 +3,7 @@ use super::models::{
     CurrentPlayer, GameSessionDbI, GameSessionDbU, IpAddressDbI, IpAddressDbQ, PlayerDbI,
     PlayerDbQ, PlayerSessionDbI, PlayerSessionDbU,
 };
-use crate::kf2_log::logger::{GameSession, PlayerSession};
+use crate::kf2_log::logger::{GameSession, PlayerSession, SessionStatus};
 use crate::kf2_scrape::models::{PlayerInGame, PlayerInfo};
 use diesel::mysql::MysqlConnection;
 use diesel::r2d2::{ConnectionManager, PooledConnection};
@@ -226,15 +226,21 @@ impl KfDbManager {
         let mut connection = self.get_connection()?;
         let map_name = game_info.map_name.clone();
         let db_id;
-        if let Some(id) = game_info.db_id {
-            db_id = id;
-            let game_session = game_info.into();
-            Self::update_game_session(&mut connection, game_session)?;
-            info!("Updated game session: {}, {}", db_id, map_name);
-        } else {
+        if game_info.status == SessionStatus::New {
             let game_session = game_info.into();
             db_id = Self::insert_game_session(&mut connection, game_session)?;
             info!("New game session: {}, {}", db_id, map_name);
+        } else if game_info.status == SessionStatus::InProgress {
+            if let Some(id) = game_info.db_id {
+                db_id = id;
+                let game_session = game_info.into();
+                Self::update_game_session(&mut connection, game_session)?;
+                info!("Updated game session: {}, {}", db_id, map_name);
+            } else {
+                return Err(format!("No game session id for status {:?}", game_info.status).into());
+            }
+        } else {
+            return Err(format!("Invalid game session status {:?}", game_info.status).into());
         }
         Ok(db_id)
     }
