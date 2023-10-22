@@ -239,6 +239,17 @@ impl KfDbManager {
         Ok(db_id)
     }
 
+    pub(super) fn increment_played_sessions(
+        connection: &mut PooledConnection<ConnectionManager<MysqlConnection>>,
+        player: &PlayerSession,
+    ) -> Result<(), Box<dyn Error>> {
+        use crate::schema::unique_players::dsl::*;
+        diesel::update(unique_players.find(player.steam_id))
+            .set(maps_played.eq(maps_played + 1))
+            .execute(connection)?;
+        Ok(())
+    }
+
     pub(super) fn insert_player_session(
         connection: &mut PooledConnection<ConnectionManager<MysqlConnection>>,
         player: &PlayerSessionDbI,
@@ -280,6 +291,7 @@ impl KfDbManager {
             .into_iter()
             .filter_map(|mut np| {
                 if let Ok(id) = Self::insert_player_session(&mut connection, &np.clone().into()) {
+                    Self::increment_played_sessions(&mut connection, &np);
                     info!("Inserted new player session: {}", id);
                     np.db_id = Some(id);
                     Some(np)
