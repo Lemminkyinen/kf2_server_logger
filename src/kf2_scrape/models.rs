@@ -144,7 +144,7 @@ pub(crate) struct GameInfo {
     pub(crate) map_name: String,
     pub(crate) difficulty: KfDifficulty,
     pub(crate) game_type: String,
-    // pub(super) boss_name: String,
+    pub(crate) boss_name: String,
 }
 
 #[cfg(test)]

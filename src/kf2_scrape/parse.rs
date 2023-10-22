@@ -265,6 +265,7 @@ impl DocumentExtractor {
             map_name,
             difficulty,
             game_type,
+            boss_name: String::new(),
         })
     }
 }

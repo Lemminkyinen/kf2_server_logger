@@ -3,6 +3,7 @@ use crate::kf2_database::management::KfDbManager;
 use crate::kf2_database::models::PlayerSessionDbU;
 use crate::kf2_scrape::models::{GameInfo, KfDifficulty, PlayerInGame, PlayerInfo};
 use crate::kf2_scrape::parse::{DocumentExtractor, HeaderExtractor};
+use log::info;
 use reqwest::{Client, ClientBuilder};
 use serde::{Deserialize, Serialize};
 use std::error::Error;
@@ -187,13 +188,15 @@ impl Kf2Logger {
 
     pub(crate) async fn log_game_session(&mut self) -> Result<(), Box<dyn Error>> {
         let game_info = self.get_game_session().await?;
-
         if game_info.current_players == 0 && game_info.current_wave == 0 {
             self.game_session = None;
             return Ok(());
         }
         if let Some(game_session) = &mut self.game_session {
-            if game_session.map_name != game_info.map_name {
+            if game_session.map_name != game_info.map_name
+                || game_session.boss != game_info.boss_name
+                || game_session.reached_wave > game_info.current_wave
+            {
                 self.game_session = None;
             }
         }
@@ -211,11 +214,21 @@ impl Kf2Logger {
             game_session.reached_wave = reached_wave;
             game_session.players_at_most = players_at_most;
             game_session.ended_at = Some(chrono::Utc::now().naive_utc());
-            self.db_connection
-                .log_game_session(game_session.clone())
-                .await?;
+
+            if let Some(players) = &self.in_game_players {
+                if players.iter().any(|p| p.kills > 0) {
+                    self.db_connection
+                        .log_game_session(game_session.clone())
+                        .await?;
+                } else {
+                    info!("Game session not saved to database. Game session exist, but no in game players that have kills.");
+                }
+            } else {
+                info!("Game session not saved to database. Game session exist, but no in game players.");
+            }
         } else {
-            let boss = "get_boss()".to_string();
+            let boss = String::new();
+            let mut db_id = None;
             let mut game_session = GameSession {
                 db_id: None,
                 max_waves: game_info.max_waves,
@@ -229,11 +242,20 @@ impl Kf2Logger {
                 started_at: chrono::Utc::now().naive_utc(),
                 ended_at: None,
             };
-            let db_id = self
-                .db_connection
-                .log_game_session(game_session.clone())
-                .await?;
-            game_session.db_id = Some(db_id);
+            if let Some(players) = &self.in_game_players {
+                if players.iter().any(|p| p.kills > 0) {
+                    db_id = Some(
+                        self.db_connection
+                            .log_game_session(game_session.clone())
+                            .await?,
+                    );
+                } else {
+                    info!("Game session not saved to database. Game session exist, but no in game players that have kills.");
+                }
+            } else {
+                info!("Game session not saved to database. Game session exist, but no in game players.");
+            }
+            game_session.db_id = db_id;
             self.game_session = Some(game_session.clone());
         }
         Ok(())
@@ -298,6 +320,7 @@ impl Kf2Logger {
                             old_player_session.steam_id == new_player_session.steam_id
                         })
                         .is_none()
+                        && new_player_session.kills > 0
                 },
             ));
 
