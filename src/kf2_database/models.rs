@@ -67,7 +67,7 @@ pub(crate) struct PlayerDbI {
 
 impl From<PlayerInfo> for PlayerDbI {
     fn from(player_steam: PlayerInfo) -> Self {
-        let last_joined = chrono::Local::now().naive_utc();
+        let last_joined = chrono::Utc::now().naive_utc();
         Self {
             steam_id: player_steam.steam_id,
             name: player_steam.name,
