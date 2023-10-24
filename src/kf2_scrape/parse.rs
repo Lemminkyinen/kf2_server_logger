@@ -49,16 +49,13 @@ impl ElementParse {
     fn player_in_game<'a>(
         mut td_fields: impl Iterator<Item = ElementRef<'a>>,
     ) -> Result<PlayerInGame, Box<dyn Error>> {
-        let name = ElementParse::string(td_fields.next(), "Name tr not found")?;
-        let perk = Perk::map(&ElementParse::string(
-            td_fields.next(),
-            "Perk tr not found",
-        )?)?;
-        let dosh = ElementParse::int(td_fields.next(), "Dosh td not found").unwrap_or(0);
-        let health = ElementParse::int(td_fields.next(), "Health td not found").unwrap_or(0);
-        let kills = ElementParse::int(td_fields.next(), "Kills td not found").unwrap_or(0);
-        let ping = ElementParse::int(td_fields.next(), "Ping td not found").unwrap_or(0);
-        let admin = ElementParse::bool(td_fields.next(), "Admin td not found")?;
+        let name = Self::string(td_fields.next(), "Name tr not found")?;
+        let perk = Perk::map(&Self::string(td_fields.next(), "Perk tr not found")?)?;
+        let dosh = Self::int(td_fields.next(), "Dosh td not found").unwrap_or(0);
+        let health = Self::int(td_fields.next(), "Health td not found").unwrap_or(0);
+        let kills = Self::int(td_fields.next(), "Kills td not found").unwrap_or(0);
+        let ping = Self::int(td_fields.next(), "Ping td not found").unwrap_or(0);
+        let admin = Self::bool(td_fields.next(), "Admin td not found")?;
         Ok(PlayerInGame {
             name,
             perk,
@@ -73,13 +70,13 @@ impl ElementParse {
     fn player_info<'a>(
         mut td_fields: impl Iterator<Item = ElementRef<'a>>,
     ) -> Result<PlayerInfo, Box<dyn Error>> {
-        let name = ElementParse::string(td_fields.next(), "Name td not found")?;
-        let ping = ElementParse::int(td_fields.next(), "Ping td not found").unwrap_or(0);
-        let ip = ElementParse::ip_addr(td_fields.next(), "IP td not found")?;
-        let unique_net_id = ElementParse::string(td_fields.next(), "Unique Net ID td not found")?;
-        let steam_id = ElementParse::int(td_fields.next(), "Steam ID td not found")?;
+        let name = Self::string(td_fields.next(), "Name td not found")?;
+        let ping = Self::int(td_fields.next(), "Ping td not found").unwrap_or(0);
+        let ip = Self::ip_addr(td_fields.next(), "IP td not found")?;
+        let unique_net_id = Self::string(td_fields.next(), "Unique Net ID td not found")?;
+        let steam_id = Self::int(td_fields.next(), "Steam ID td not found")?;
         td_fields.next();
-        let admin = ElementParse::bool(td_fields.next(), "Admin td not found")?;
+        let admin = Self::bool(td_fields.next(), "Admin td not found")?;
         Ok(PlayerInfo {
             name,
             ping,
@@ -117,21 +114,9 @@ impl DocumentExtractor {
     }
 
     fn parse_player_table(&self) -> Result<Vec<ElementRef>, Box<dyn Error>> {
-        let table_selector = Selector::parse(r#"table[id="players"]"#)?;
-        let tbody_selector = Selector::parse("tbody")?;
-        let tr_selector = Selector::parse("tr")?;
+        let tr_selector = Selector::parse(r#"table[id="players"] tbody tr"#)?;
         let em_selector = Selector::parse("em")?;
-        let player_table = self
-            .document
-            .select(&table_selector)
-            .next()
-            .ok_or(r#"table[id="players"] not found"#)?;
-        let player_tbody = player_table
-            .select(&tbody_selector)
-            .next()
-            .ok_or("tbody not found")?;
-        let player_trs: Vec<ElementRef<'_>> = player_tbody.select(&tr_selector).collect();
-
+        let player_trs: Vec<ElementRef<'_>> = self.document.select(&tr_selector).collect();
         match player_trs
             .iter()
             .any(|e| e.select(&em_selector).next().is_some())
@@ -207,25 +192,13 @@ impl DocumentExtractor {
     }
 
     fn parse_current_game(&self) -> Result<Vec<scraper::element_ref::ElementRef>, Box<dyn Error>> {
-        let current_game_selector = Selector::parse(r#"dl[id="currentGame"]"#)?;
-        let dd_selector = Selector::parse("dd")?;
-        let current_game = &self
-            .document
-            .select(&current_game_selector)
-            .next()
-            .ok_or(r#"dl[id="currentGame"] not found"#)?;
-        Ok(current_game.select(&dd_selector).collect())
+        let dd_selector = Selector::parse(r#"dl[id="currentGame"] dd"#)?;
+        Ok(self.document.select(&dd_selector).collect())
     }
 
     fn parse_current_rules(&self) -> Result<Vec<scraper::element_ref::ElementRef>, Box<dyn Error>> {
-        let current_rules_selector = Selector::parse(r#"dl[id="currentRules"]"#)?;
-        let dd_selector = Selector::parse("dd")?;
-        let current_rules = &self
-            .document
-            .select(&current_rules_selector)
-            .next()
-            .ok_or(r#"dl[id="currentRules"] not found"#)?;
-        Ok(current_rules.select(&dd_selector).collect())
+        let dd_selector = Selector::parse(r#"dl[id="currentRules"] dd"#)?;
+        Ok(self.document.select(&dd_selector).collect())
     }
 
     pub(crate) fn parse_current_map_info(&self) -> Result<GameInfo, Box<dyn Error>> {
