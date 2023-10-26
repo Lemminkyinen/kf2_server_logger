@@ -1,3 +1,5 @@
+use crate::kf2_log::logger::Boss;
+
 use super::models::{GameInfo, KfDifficulty, Perk, PlayerData, PlayerInGame, PlayerInfo};
 use log::error;
 use reqwest::header::HeaderMap;
@@ -238,8 +240,24 @@ impl DocumentExtractor {
             map_name,
             difficulty,
             game_type,
-            boss_name: String::new(),
+            boss: Boss::Undefined,
         })
+    }
+
+    pub(crate) fn parse_current_boss_info(&self) -> Result<u8, Box<dyn Error>> {
+        let console_results_selector = Selector::parse(r#"div[id="consoleResults"]"#)?;
+        let result = self
+            .document
+            .select(&console_results_selector)
+            .next()
+            .ok_or("consoleResults not found!")?
+            .inner_html();
+        let boss_index = result
+            .split("BossIndex = ")
+            .last()
+            .ok_or("Boss index not found")?
+            .parse()?;
+        Ok(boss_index)
     }
 }
 
@@ -774,6 +792,31 @@ mod tests_document_extractor {
         )
     }
 
+    fn get_current_boss_document(boss: Boss) -> String {
+        format!(
+            r#"
+        <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+        <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+        <body class="">
+        <div id="content">
+        <h2>Management Console</h2>
+        <div id="consoleCommand" class="section">
+            <p><em>Note:</em> not all console commands will return information. This does not mean that they were not
+                executed.</p>
+            <form action="/ServerAdmin/console" method="post">
+                <p><input type="text" name="command" value="getall KFGameReplicationInfo BossIndex" size="80" /><button
+                        type="submit">execute</button></p>
+            </form>
+        </div>
+        <div id="consoleResults" style="">&gt; <span class="command">getall KFGameReplicationInfo BossIndex</span><br />
+            0) KFGameReplicationInfo KF-Elysium.TheWorld:PersistentLevel.KFGameReplicationInfo_105.BossIndex = {boss_index}</div>
+        </div>
+        </body>
+        </html>"#,
+            boss_index = boss.value()
+        )
+    }
+
     #[test]
     fn test_parse_token() {
         let document = get_form_token_document("kissa123");
@@ -862,5 +905,29 @@ mod tests_document_extractor {
         let extractor = DocumentExtractor::new(&document);
         let players = extractor.parse_steam_player_info();
         assert!(players.is_empty());
+    }
+
+    #[test]
+    fn test_parse_current_boss() {
+        let document = get_current_boss_document(Boss::Abomination);
+        let extractor = DocumentExtractor::new(&document);
+        let boss = extractor.parse_current_boss_info().unwrap();
+        assert!(boss == Boss::Abomination.value());
+    }
+
+    #[test]
+    fn test_parse_current_boss_2() {
+        let document = get_current_boss_document(Boss::HansVolter);
+        let extractor = DocumentExtractor::new(&document);
+        let boss = extractor.parse_current_boss_info().unwrap();
+        assert!(boss != Boss::Abomination.value());
+    }
+
+    #[test]
+    fn test_parse_current_boss_empty() {
+        let document = get_steam_player_table_document(false);
+        let extractor = DocumentExtractor::new(&document);
+        let boss = extractor.parse_current_boss_info();
+        assert!(boss.is_err());
     }
 }

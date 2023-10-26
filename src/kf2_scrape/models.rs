@@ -1,5 +1,7 @@
 use std::{error::Error, net::IpAddr};
 
+use crate::kf2_log::logger::Boss;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Perk {
     Berserker,
@@ -144,7 +146,7 @@ pub(crate) struct GameInfo {
     pub(crate) map_name: String,
     pub(crate) difficulty: KfDifficulty,
     pub(crate) game_type: String,
-    pub(crate) boss_name: String,
+    pub(crate) boss: Boss,
 }
 
 #[cfg(test)]

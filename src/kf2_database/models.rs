@@ -130,7 +130,7 @@ impl Into<GameSessionDbI> for GameSession {
             map_name: self.map_name,
             difficulty: self.difficulty.to_string(),
             game_type: self.game_type,
-            boss: self.boss,
+            boss: self.boss.to_string(),
             started_at: self.started_at,
             ended_at: self.ended_at,
         }
@@ -165,7 +165,7 @@ impl Into<GameSessionDbU> for GameSession {
             map_name: self.map_name,
             difficulty: self.difficulty.to_string(),
             game_type: self.game_type,
-            boss: self.boss,
+            boss: self.boss.to_string(),
             started_at: self.started_at,
             ended_at: self.ended_at,
         }

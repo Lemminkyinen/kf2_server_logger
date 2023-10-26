@@ -6,8 +6,48 @@ use crate::kf2_scrape::parse::{DocumentExtractor, HeaderExtractor};
 use log::info;
 use reqwest::{Client, ClientBuilder};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::error::Error;
 use url::Url;
+
+#[repr(u8)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum Boss {
+    HansVolter = 0,
+    Patriarch = 1,
+    KingFleshpound = 2,
+    Matriarch = 3,
+    Abomination = 4,
+    Undefined = 5,
+}
+
+impl Boss {
+    pub(crate) fn map(input: &u8) -> Result<Self, Box<dyn Error>> {
+        match input {
+            0 => Ok(Boss::HansVolter),
+            1 => Ok(Boss::Patriarch),
+            2 => Ok(Boss::KingFleshpound),
+            3 => Ok(Boss::Matriarch),
+            4 => Ok(Boss::Abomination),
+            _ => Err(format!("Unknown boss {}", input).into()),
+        }
+    }
+
+    pub(crate) fn value(&self) -> u8 {
+        self.clone() as u8
+    }
+
+    pub(crate) fn to_string(&self) -> String {
+        match self {
+            Boss::HansVolter => String::from("Hans Volter"),
+            Boss::Patriarch => String::from("Patriarch"),
+            Boss::KingFleshpound => String::from("King Fleshpound"),
+            Boss::Matriarch => String::from("Matriarch"),
+            Boss::Abomination => String::from("Abomination"),
+            Boss::Undefined => String::from("Undefined"),
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 pub(crate) struct PlayerSession {
@@ -51,7 +91,7 @@ pub(crate) struct GameSession {
     pub(crate) map_name: String,
     pub(crate) difficulty: KfDifficulty,
     pub(crate) game_type: String,
-    pub(crate) boss: String,
+    pub(crate) boss: Boss,
     pub(crate) started_at: chrono::NaiveDateTime,
     pub(crate) ended_at: Option<chrono::NaiveDateTime>,
     pub(crate) status: SessionStatus,
@@ -67,10 +107,11 @@ pub(super) struct AuthForm {
 }
 
 pub(super) struct Kf2Url {
-    pub base: Url,
-    pub web_admin: Url,
-    pub info: Url,
-    pub players: Url,
+    pub(super) base: Url,
+    pub(super) web_admin: Url,
+    pub(super) info: Url,
+    pub(super) players: Url,
+    pub(super) console: Url,
 }
 
 pub(crate) struct Kf2Logger {
@@ -91,12 +132,14 @@ impl Kf2Url {
         let web_admin = base_url.join("ServerAdmin/")?;
         let info = web_admin.join("current/info")?;
         let players = web_admin.join("current/players")?;
+        let console = web_admin.join("console")?;
 
         Ok(Self {
             base,
             web_admin,
             info,
             players,
+            console,
         })
     }
 }
@@ -187,6 +230,23 @@ impl Kf2Logger {
         Ok(())
     }
 
+    async fn get_boss_info(&self) -> Result<Boss, Box<dyn Error>> {
+        let form_data = HashMap::from([(
+            String::from("command"),
+            String::from("getall KFGameReplicationInfo BossIndex"),
+        )]);
+        let response = self
+            .session
+            .post(self.url.console.as_str())
+            .form(&form_data)
+            .send()
+            .await?;
+        let text = response.text().await?;
+        let document = DocumentExtractor::new(&text);
+        let boss_index = document.parse_current_boss_info()?;
+        Ok(Boss::map(&boss_index)?)
+    }
+
     async fn get_game_session(&self) -> Result<GameInfo, Box<dyn Error>> {
         let response = self.session.get(self.url.info.as_str()).send().await?;
         let text = response.text().await?;
@@ -195,14 +255,15 @@ impl Kf2Logger {
     }
 
     pub(crate) async fn log_game_session(&mut self) -> Result<(), Box<dyn Error>> {
-        let game_info = self.get_game_session().await?;
+        let mut game_info = self.get_game_session().await?;
+        game_info.boss = self.get_boss_info().await?;
         if game_info.current_players == 0 {
             self.game_session = None;
             return Ok(());
         }
         if let Some(game_session) = &mut self.game_session {
             if game_session.map_name != game_info.map_name
-                || game_session.boss != game_info.boss_name
+                || game_session.boss != game_info.boss
                 || game_session.reached_wave > game_info.current_wave
             {
                 self.game_session = None;
@@ -238,7 +299,6 @@ impl Kf2Logger {
                 info!("Game session not saved to database. Game session exist, but no in game players.");
             }
         } else {
-            let boss = String::new();
             let game_session = GameSession {
                 db_id: None,
                 max_waves: game_info.max_waves,
@@ -248,7 +308,7 @@ impl Kf2Logger {
                 map_name: game_info.map_name,
                 difficulty: game_info.difficulty,
                 game_type: game_info.game_type,
-                boss: boss,
+                boss: game_info.boss,
                 started_at: chrono::Utc::now().naive_utc(),
                 ended_at: None,
                 status: SessionStatus::New,
