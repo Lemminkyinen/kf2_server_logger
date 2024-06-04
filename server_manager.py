@@ -2,18 +2,18 @@ import os
 import subprocess
 import sys
 import time
-from dataclasses import dataclass, asdict
 from functools import cached_property
 
 import schedule
+from pydantic import BaseModel
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 SERVER_PROCESS = None
 LOGGER_PROCESS = None
 POPEN_KWARGS = None
 
 
-@dataclass
-class PopenKwargs:
+class PopenKwargs(BaseModel):
     shell: bool
     bufsize: int
     universal_newlines: bool
@@ -21,11 +21,10 @@ class PopenKwargs:
 
     @cached_property
     def dict(self):
-        return asdict(self)
+        return self.model_dump()
 
 
-@dataclass(slots=True)
-class Args:
+class Args(BaseSettings):
     server_path: str
     logger_path: str
     web_admin_url: str
@@ -35,6 +34,23 @@ class Args:
     database_name: str
     database_username: str
     database_password: str
+
+    model_config = SettingsConfigDict(env_file=".env")
+
+
+def set_firewall_game():
+    ports = (7777, 27015, 8080, 20560)
+    protocols = ("udp", "udp", "tcp", "udp")
+
+    for port, protocol in zip(ports, protocols):
+        command = f"sudo ufw allow {port}/{protocol}"
+        command = command.split(" ")
+        try:
+            print(f"Opening {protocol} port {port}...")
+            subprocess.Popen(command, **POPEN_KWARGS.dict).wait()
+            print(f"Port {port} opened.")
+        except Exception as e:
+            print(e)
 
 
 def set_firewall_ttl():
@@ -53,17 +69,27 @@ def update_server(server_path: str, output: int = subprocess.DEVNULL):
     command = command.split(" ")
     try:
         print("Starting the update process...")
-        subprocess.Popen(command, cwd=server_path, stderr=output, stdout=output, **POPEN_KWARGS.dict).wait()
+        subprocess.Popen(
+            command, cwd=server_path, stderr=output, stdout=output, **POPEN_KWARGS.dict
+        ).wait()
         print("Update process finished.")
     except Exception as e:
         print(e)
 
 
 def start_server(args: Args) -> subprocess.Popen[str]:
-    command = f"{args.server_path}/Binaries/Win64/KFGameSteamServer.bin.x86_64 kf-bioticslab"
+    command = (
+        f"{args.server_path}/Binaries/Win64/KFGameSteamServer.bin.x86_64 kf-bioticslab"
+    )
     command = command.split(" ")
     try:
-        server_process = subprocess.Popen(command, cwd=args.server_path, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, **POPEN_KWARGS.dict)
+        server_process = subprocess.Popen(
+            command,
+            cwd=args.server_path,
+            stderr=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            **POPEN_KWARGS.dict,
+        )
         return server_process
     except Exception as e:
         print(e)
@@ -75,7 +101,9 @@ def start_logger(args: Args) -> subprocess.Popen[str]:
     env = os.environ
     env["RUST_LOG"] = "info"
     try:
-        logger_process = subprocess.Popen(command, cwd=args.logger_path, env=env, **POPEN_KWARGS.dict)
+        logger_process = subprocess.Popen(
+            command, cwd=args.logger_path, env=env, **POPEN_KWARGS.dict
+        )
         return logger_process
     except Exception as e:
         print(e)
@@ -107,16 +135,15 @@ def init_all(args: Args):
         print("All processes started.")
         SERVER_PROCESS = server_process
         LOGGER_PROCESS = logger_process
-    except:
+    except Exception as e:
+        print(e)
         stop_all()
         sys.exit()
 
 
 def main():
     global POPEN_KWARGS
-    kf2_args = Args(
-        
-    )
+    kf2_args = Args()
 
     POPEN_KWARGS = PopenKwargs(
         shell=False,
@@ -127,6 +154,7 @@ def main():
 
     schedule.every().day.at("06:00").do(init_all, args=kf2_args)
 
+    set_firewall_game()
     set_firewall_ttl()
     init_all(kf2_args)
 
@@ -138,6 +166,7 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except:
+    except Exception as e:
+        print(e)
         stop_all()
         sys.exit()
