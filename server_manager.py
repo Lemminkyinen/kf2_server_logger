@@ -1,3 +1,5 @@
+import datetime
+import logging
 import os
 import subprocess
 import sys
@@ -7,6 +9,17 @@ from functools import cached_property
 import schedule
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+log_dir = "logs"
+if not os.path.exists(log_dir):
+    os.makedirs(log_dir)
+
+logging.basicConfig(
+    filename="logs/server_manager.log",
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 
 SERVER_PROCESS = None
 LOGGER_PROCESS = None
@@ -38,6 +51,10 @@ class Args(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env")
 
 
+def get_date_str() -> str:
+    return datetime.date.today().isoformat().replace("-", "")
+
+
 def set_firewall_game():
     ports = (7777, 27015, 8080, 20560)
     protocols = ("udp", "udp", "tcp", "udp")
@@ -46,35 +63,41 @@ def set_firewall_game():
         command = f"sudo ufw allow {port}/{protocol}"
         command = command.split(" ")
         try:
-            print(f"Opening {protocol} port {port}...")
+            logging.info(f"Opening {protocol} port {port}...")
             subprocess.Popen(command, **POPEN_KWARGS.dict).wait()
-            print(f"Port {port} opened.")
+            logging.info(f"Port {port} opened.")
         except Exception as e:
-            print(e)
+            logging.error(e)
 
 
 def set_firewall_ttl():
     command = "sudo iptables -I INPUT -p udp --dport 7777:7778 -m ttl --ttl-gt 200 --jump DROP"
     command = command.split(" ")
     try:
-        print("Setting firewall TTL...")
+        logging.info("Setting firewall TTL...")
         subprocess.Popen(command, **POPEN_KWARGS.dict).wait()
-        print("Firewall TTL set.")
+        logging.info("Firewall TTL set.")
     except Exception as e:
-        print(e)
+        logging.error(e)
 
 
-def update_server(server_path: str, output: int = subprocess.DEVNULL):
-    command = f"steamcmd +force_install_dir {server_path} +login anonymous +app_update 232130 validate +exit"
+def update_server(server_path: str):
+    command = f"/usr/games/steamcmd +force_install_dir {server_path} +login anonymous +app_update 232130 validate +exit"
     command = command.split(" ")
+    date = get_date_str()
     try:
-        print("Starting the update process...")
-        subprocess.Popen(
-            command, cwd=server_path, stderr=output, stdout=output, **POPEN_KWARGS.dict
-        ).wait()
-        print("Update process finished.")
+        logging.info("Starting the update process...")
+        with open(f"logs/server_update_{date}.log", "w") as update_log:
+            subprocess.Popen(
+                command,
+                cwd=server_path,
+                stderr=update_log,
+                stdout=update_log,
+                **POPEN_KWARGS.dict,
+            ).wait()
+        logging.info("Update process finished.")
     except Exception as e:
-        print(e)
+        logging.error(e)
 
 
 def start_server(args: Args) -> subprocess.Popen[str]:
@@ -82,44 +105,53 @@ def start_server(args: Args) -> subprocess.Popen[str]:
         f"{args.server_path}/Binaries/Win64/KFGameSteamServer.bin.x86_64 kf-bioticslab"
     )
     command = command.split(" ")
+    date = get_date_str()
     try:
-        server_process = subprocess.Popen(
-            command,
-            cwd=args.server_path,
-            stderr=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            **POPEN_KWARGS.dict,
-        )
+        with open(f"logs/server_output_{date}.log", "w") as server_log:
+            server_process = subprocess.Popen(
+                command,
+                cwd=args.server_path,
+                stderr=server_log,
+                stdout=server_log,
+                **POPEN_KWARGS.dict,
+            )
         return server_process
     except Exception as e:
-        print(e)
+        logging.error(e)
 
 
 def start_logger(args: Args) -> subprocess.Popen[str]:
-    command = f"cargo run -r -- {args.web_admin_url} {args.web_admin_username} {args.web_admin_password} {args.database_url} {args.database_name} {args.database_username} {args.database_password}"
+    command = f"/home/jijitsu/.cargo/bin/cargo run -r -- {args.web_admin_url} {args.web_admin_username} {args.web_admin_password} {args.database_url} {args.database_name} {args.database_username} {args.database_password}"
     command = command.split(" ")
     env = os.environ
     env["RUST_LOG"] = "info"
+    date = get_date_str()
     try:
-        logger_process = subprocess.Popen(
-            command, cwd=args.logger_path, env=env, **POPEN_KWARGS.dict
-        )
+        with open(f"logs/logger_output_{date}.log", "w") as logger_log:
+            logger_process = subprocess.Popen(
+                command,
+                cwd=args.logger_path,
+                env=env,
+                stderr=logger_log,
+                stdout=logger_log,
+                **POPEN_KWARGS.dict,
+            )
         return logger_process
     except Exception as e:
-        print(e)
+        logging.error(e)
 
 
 def stop_all():
     global SERVER_PROCESS, LOGGER_PROCESS
     if SERVER_PROCESS and LOGGER_PROCESS:
-        print("Shutting down all processes...")
+        logging.info("Shutting down all processes...")
         SERVER_PROCESS.terminate()
         SERVER_PROCESS.wait()
         SERVER_PROCESS = None
         LOGGER_PROCESS.terminate()
         LOGGER_PROCESS.wait()
         LOGGER_PROCESS = None
-        print("All processes shut down.")
+        logging.info("All processes shut down.")
 
 
 def init_all(args: Args):
@@ -127,22 +159,27 @@ def init_all(args: Args):
     try:
         stop_all()
         update_server(args.server_path)
-        print("Starting server...")
+        logging.info("Starting server...")
         server_process = start_server(args)
         time.sleep(20)
-        print("Starting logger...")
+        logging.info("Starting logger...")
         logger_process = start_logger(args)
-        print("All processes started.")
+        logging.info("All processes started.")
         SERVER_PROCESS = server_process
         LOGGER_PROCESS = logger_process
     except Exception as e:
-        print(e)
+        logging.error(e)
         stop_all()
         sys.exit()
 
 
 def main():
     global POPEN_KWARGS
+
+    logging.info(f"PATH: {os.environ['PATH']}")
+    logging.info(f"Current directory: {os.getcwd()}")
+    logging.info(f"User ID: {os.getuid()}")
+
     kf2_args = Args()
 
     POPEN_KWARGS = PopenKwargs(
@@ -167,6 +204,6 @@ if __name__ == "__main__":
     try:
         main()
     except Exception as e:
-        print(e)
+        logging.error(e)
         stop_all()
         sys.exit()
