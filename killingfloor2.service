@@ -1,0 +1,12 @@
+[Unit]
+Description=Killing Floor 2 Server Manager
+After=network.target
+
+[Service]
+User=youruser
+ExecStart=/path/to/venv/python3 /path/to/your/server_manager.py
+Restart=always
+WorkingDirectory=/path/to/your/working/directory
+
+[Install]
+WantedBy=multi-user.target
