@@ -1,6 +1,8 @@
 import datetime
+import gzip
 import logging
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -134,6 +136,31 @@ def start_logger(args: Args) -> subprocess.Popen[str]:
         logging.error(e)
 
 
+def compress_old_logs():
+    """Compress log files that are older than 1 day"""
+
+    logging.info("Compressing old logs.")
+    now = datetime.datetime.now()
+    compressed_dir = os.path.join(log_dir, "compressed")
+
+    # Create the compressed directory if it doesn't exist
+    os.makedirs(compressed_dir, exist_ok=True)
+
+    for filename in os.listdir(log_dir):
+        if filename.endswith(".log"):
+            file_path = os.path.join(log_dir, filename)
+            file_time = datetime.datetime.fromtimestamp(os.path.getmtime(file_path))
+            if now - file_time > datetime.timedelta(1):
+                with open(file_path, "rb") as f_in:
+                    # Save the compressed file in the compressed directory
+                    with gzip.open(
+                        os.path.join(compressed_dir, filename + ".gz"), "wb"
+                    ) as f_out:
+                        shutil.copyfileobj(f_in, f_out)
+                os.remove(file_path)
+    logging.info("Logs compressed successfully.")
+
+
 def stop_all():
     global SERVER_PROCESS, LOGGER_PROCESS
     if SERVER_PROCESS and LOGGER_PROCESS:
@@ -151,6 +178,7 @@ def init_all(args: Args):
     global SERVER_PROCESS, LOGGER_PROCESS
     try:
         stop_all()
+        compress_old_logs()
         update_server(args.server_path)
         logging.info("Starting server...")
         server_process = start_server(args)
