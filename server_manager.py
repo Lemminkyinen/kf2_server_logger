@@ -40,15 +40,8 @@ class PopenKwargs(BaseModel):
 class Args(BaseSettings):
     server_path: str
     logger_path: str
-    web_admin_url: str
-    web_admin_username: str
-    web_admin_password: str
-    database_url: str
-    database_name: str
-    database_username: str
-    database_password: str
 
-    model_config = SettingsConfigDict(env_file=".env")
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 
 def get_date_str() -> str:
@@ -121,7 +114,7 @@ def start_server(args: Args) -> subprocess.Popen[str]:
 
 
 def start_logger(args: Args) -> subprocess.Popen[str]:
-    command = f"/home/jijitsu/.cargo/bin/cargo run -r -- {args.web_admin_url} {args.web_admin_username} {args.web_admin_password} {args.database_url} {args.database_name} {args.database_username} {args.database_password}"
+    command = "/home/jijitsu/.cargo/bin/cargo run -r"
     command = command.split(" ")
     env = os.environ
     env["RUST_LOG"] = "info"
